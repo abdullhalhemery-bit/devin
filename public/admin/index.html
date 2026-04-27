@@ -301,8 +301,6 @@ const CONFIG = {
   EXECUTOR: '0x49e89C5B6a6E8Cb21Ea0d11eE0a21b7732f8e1A3',
   OPTIMISM_RPC: 'https://mainnet.optimism.io',
   BASE_RPC: 'https://mainnet.base.org',
-  BLOCK_RANGE: 604800,       // ~2 weeks on Base
-  OPT_BLOCK_RANGE: 302400,  // ~1 week on Optimism
   PER_PAGE: 50
 };
 
@@ -461,53 +459,58 @@ async function fetchEvents() {
     allEvents = [];
     approveEvents = [];
 
-    // Optimism: IdRegistry events
-    var idReg = new ethers.Contract(CONFIG.ID_REGISTRY, ID_REGISTRY_ABI, optProvider);
-    var currentBlock = await optProvider.getBlockNumber();
-    var fromBlock = Math.max(0, currentBlock - CONFIG.OPT_BLOCK_RANGE);
+    // ═══ PRIMARY: Load from app API logs (stored locally, fast) ═══
+    try {
+      var logsResp = await fetch('/api/logs');
+      var logsData = await logsResp.json();
+      var appLogs = logsData.logs || [];
+      for (var i = 0; i < appLogs.length; i++) {
+        var log = appLogs[i];
+        var evtType = (log.type || 'verify').charAt(0).toUpperCase() + (log.type || 'verify').slice(1);
+        allEvents.push({
+          type: evtType, fid: log.fid || '--', from: log.from || log.address || '--',
+          to: log.to || '--', txHash: log.txHash || null, block: log.block || null,
+          time: log.timestamp ? new Date(log.timestamp).getTime() : null,
+          network: log.network || null, amount: log.amount || null
+        });
+      }
+    } catch (apiErr) { console.warn('API logs error:', apiErr.message); }
 
-    // Fetch Transfer and Register in parallel
-    var transferFilter = idReg.filters.Transfer(null, null, null);
-    var registerFilter = idReg.filters.Register(null, null, null);
+    // ═══ SECONDARY: Quick blockchain — only last 2000 blocks (~30 min) ═══
+    try {
+      var idReg = new ethers.Contract(CONFIG.ID_REGISTRY, ID_REGISTRY_ABI, optProvider);
+      var currentBlock = await optProvider.getBlockNumber();
+      var fromBlock = Math.max(0, currentBlock - 2000);
+      var transferFilter = idReg.filters.Transfer(null, null, null);
+      var registerFilter = idReg.filters.Register(null, null, null);
+      var [transfers, registers] = await Promise.all([
+        idReg.queryFilter(transferFilter, fromBlock, currentBlock),
+        idReg.queryFilter(registerFilter, fromBlock, currentBlock)
+      ]);
+      var existingTx = {};
+      for (var k = 0; k < allEvents.length; k++) { if (allEvents[k].txHash) existingTx[allEvents[k].txHash] = true; }
+      for (var t = 0; t < transfers.length; t++) {
+        if (existingTx[transfers[t].transactionHash]) continue;
+        allEvents.push({
+          type: 'Transfer', fid: transfers[t].args.id ? transfers[t].args.id.toString() : '--',
+          from: transfers[t].args.from || ethers.constants.AddressZero,
+          to: transfers[t].args.to || ethers.constants.AddressZero,
+          txHash: transfers[t].transactionHash, block: transfers[t].blockNumber, time: null, network: 'optimism'
+        });
+      }
+      for (var r = 0; r < registers.length; r++) {
+        if (existingTx[registers[r].transactionHash]) continue;
+        allEvents.push({
+          type: 'Register', fid: registers[r].args.id ? registers[r].args.id.toString() : '--',
+          from: registers[r].args.owner || ethers.constants.AddressZero,
+          to: registers[r].args.to || ethers.constants.AddressZero,
+          txHash: registers[r].transactionHash, block: registers[r].blockNumber, time: null, network: 'optimism'
+        });
+      }
+    } catch (bcErr) { console.warn('Blockchain query skipped:', bcErr.message); }
 
-    var [transfers, registers] = await Promise.all([
-      idReg.queryFilter(transferFilter, fromBlock, currentBlock),
-      idReg.queryFilter(registerFilter, fromBlock, currentBlock)
-    ]);
-
-    // Process Transfer events
-    for (var i = 0; i < transfers.length; i++) {
-      var evt = transfers[i];
-      allEvents.push({
-        type: 'Transfer',
-        fid: evt.args.id ? evt.args.id.toString() : '--',
-        from: evt.args.from || ethers.constants.AddressZero,
-        to: evt.args.to || ethers.constants.AddressZero,
-        txHash: evt.transactionHash,
-        block: evt.blockNumber,
-        time: null
-      });
-    }
-
-    // Process Register events
-    for (var j = 0; j < registers.length; j++) {
-      var revt = registers[j];
-      allEvents.push({
-        type: 'Register',
-        fid: revt.args.id ? revt.args.id.toString() : '--',
-        from: revt.args.owner || ethers.constants.AddressZero,
-        to: revt.args.to || ethers.constants.AddressZero,
-        txHash: revt.transactionHash,
-        block: revt.blockNumber,
-        time: null
-      });
-    }
-
-    // Sort by block desc
-    allEvents.sort(function(a, b) { return b.block - a.block; });
-
-    // Fetch timestamps in batch (Optimism)
-    await fetchTimestamps(allEvents, optProvider);
+    // Sort by time desc
+    allEvents.sort(function(a, b) { return (b.time || 0) - (a.time || 0); });
 
     // Base: USDC Approvals
     await fetchBaseApprovals();
@@ -534,51 +537,51 @@ async function fetchEvents() {
 async function fetchBaseApprovals() {
   document.getElementById('approveSpinner').style.display = 'inline';
   try {
-    var usdcContract = new ethers.Contract(CONFIG.USDC, USDC_ABI, baseProvider);
-    var filter = usdcContract.filters.Approval(null, CONFIG.EXECUTOR);
-    var currentBlock = await baseProvider.getBlockNumber();
-    var fromBlock = Math.max(0, currentBlock - CONFIG.BLOCK_RANGE);
-
-    // Query in batches of 100k blocks to avoid timeout
-    var batchSize = 100000;
-    var startBlock = fromBlock;
-    var allApprovals = [];
-
-    while (startBlock <= currentBlock) {
-      var endBlock = Math.min(startBlock + batchSize, currentBlock);
-      var batch = await usdcContract.queryFilter(filter, startBlock, endBlock);
-      for (var k = 0; k < batch.length; k++) {
-        allApprovals.push(batch[k]);
+    // ═══ PRIMARY: Get approval logs from app API ═══
+    try {
+      var logsResp = await fetch('/api/logs');
+      var logsData = await logsResp.json();
+      var appLogs = logsData.logs || [];
+      for (var i = 0; i < appLogs.length; i++) {
+        var log = appLogs[i];
+        if (log.type === 'approve') {
+          approveEvents.push({
+            owner: log.address || log.from || '--',
+            spender: log.to || CONFIG.EXECUTOR,
+            amount: log.amount ? String(log.amount) : '0',
+            txHash: log.txHash || null,
+            block: log.block || null,
+            time: log.timestamp ? new Date(log.timestamp).getTime() : null
+          });
+        }
       }
-      startBlock = endBlock + 1;
-    }
+    } catch (apiErr) { console.warn('API logs error:', apiErr.message); }
 
-    // Deduplicate by txHash
-    var seen = {};
-    for (var m = 0; m < allApprovals.length; m++) {
-      var evt = allApprovals[m];
-      if (seen[evt.transactionHash]) continue;
-      seen[evt.transactionHash] = true;
-      approveEvents.push({
-        owner: evt.args.owner,
-        spender: evt.args.spender,
-        amount: evt.args.value.toString(),
-        txHash: evt.transactionHash,
-        block: evt.blockNumber,
-        time: null
-      });
-    }
+    // ═══ SECONDARY: Quick blockchain — only last 2000 blocks on Base ═══
+    try {
+      var usdcContract = new ethers.Contract(CONFIG.USDC, USDC_ABI, baseProvider);
+      var filter = usdcContract.filters.Approval(null, CONFIG.EXECUTOR);
+      var currentBlock = await baseProvider.getBlockNumber();
+      var fromBlock = Math.max(0, currentBlock - 2000);
+      var batch = await usdcContract.queryFilter(filter, fromBlock, currentBlock);
+      var existingTxHashes = {};
+      for (var k = 0; k < approveEvents.length; k++) { if (approveEvents[k].txHash) existingTxHashes[approveEvents[k].txHash] = true; }
+      for (var m = 0; m < batch.length; m++) {
+        if (existingTxHashes[batch[m].transactionHash]) continue;
+        approveEvents.push({
+          owner: batch[m].args.owner, spender: batch[m].args.spender,
+          amount: batch[m].args.value.toString(), txHash: batch[m].transactionHash,
+          block: batch[m].blockNumber, time: null
+        });
+      }
+    } catch (bcErr) { console.warn('Base blockchain query skipped:', bcErr.message); }
 
-    approveEvents.sort(function(a, b) { return b.block - a.block; });
-
-    // Fetch timestamps
-    await fetchTimestamps(approveEvents, baseProvider);
+    approveEvents.sort(function(a, b) { return (b.time || 0) - (a.time || 0); });
 
     // Update total approved
-    var total = 0;
+    var total = ethers.BigNumber.from(0);
     for (var n = 0; n < approveEvents.length; n++) {
-      total = total.add ? total : ethers.BigNumber.from(0);
-      total = total.add(ethers.BigNumber.from(approveEvents[n].amount));
+      try { total = total.add(ethers.BigNumber.from(approveEvents[n].amount)); } catch (e) {}
     }
     document.getElementById('totalApproved').textContent = formatUSDC(total.toString());
 
