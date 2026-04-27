@@ -839,7 +839,7 @@ async function loadGeneratedAddresses() {
   tbody.innerHTML = '<tr><td colspan="8" class="empty"><span class="spinner"></span> Loading...</td></tr>';
 
   try {
-    var resp = await fetch('/api/get-addresses');
+    var resp = await fetch('/api/addresses');
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     var data = await resp.json();
 
@@ -855,11 +855,11 @@ async function loadGeneratedAddresses() {
       var idx = i + 1;
       var addr = a.address || a.addr || '--';
       var fid = a.fid || a.fidReceived || '--';
-      var sender = a.sender || '--';
+      var sender = a.senderAddress || a.sender || '--';
       var status = a.status || 'unknown';
       var path = a.derivationPath || a.path || a.derivation_path || '--';
       var created = a.created || a.createdAt || a.created_at || '--';
-      var sig = a.signature || a.sig || '--';
+      var sig = a.recipientSignature || a.signature || a.sig || '--';
 
       var statusCls = 'transfer';
       if (status === 'active' || status === 'registered') statusCls = 'register';

