@@ -1,0 +1,17 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjE5NDExNzQsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHhlYTRGMzVlM2M5YjYyNzYwNDhBMDA1MEU0NTAzN2MxMWMxZkU5NTgyIn0",
+    "payload": "eyJkb21haW4iOiJkZXZpbi1waS52ZXJjZWwuYXBwIn0",
+    "signature": "wEZAzcuOhURkWVWV3iaAQokFUyG776bcbow5eLJMGsRdNHJCY3D8XssitH2a+mF8GZ5g9q9QZTli0oI8YcqBchw="
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "devin",
+    "iconUrl": "/splash.png",
+    "homeUrl": "/",
+    "imageUrl": "/embed-preview.png",
+    "buttonTitle": "Open devin",
+    "splashImageUrl": "/splash.png",
+    "splashBackgroundColor": "#030704"
+  }
+}

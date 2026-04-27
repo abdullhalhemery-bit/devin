@@ -1,0 +1,17 @@
+{
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --host 0.0.0.0",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@farcaster/miniapp-sdk": "latest",
+    "@vitejs/plugin-react": "^6.0.1",
+    "@vercel/kv": "^3.0.0",
+    "ethers": "^5.7.2",
+    "react": "latest",
+    "react-dom": "latest",
+    "vite": "^8.0.10"
+  },
+  "devDependencies": {}
+}
