@@ -371,6 +371,158 @@ h2 {
   color: var(--green) !important;
 }
 
+/* ─── Farcaster Connect Button ─── */
+.fc-connect-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.fc-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* ─── Farcaster Modal ─── */
+.fc-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+}
+
+.fc-modal {
+  background: linear-gradient(145deg, #04160a, #021008);
+  border: 1px solid var(--green);
+  border-radius: 24px;
+  padding: 32px;
+  min-width: 360px;
+  max-width: 440px;
+  box-shadow: 0 0 60px rgba(57, 255, 20, 0.2), inset 0 0 30px rgba(57, 255, 20, 0.04);
+  text-align: center;
+}
+
+.fc-modal-title {
+  color: var(--green);
+  font-size: 22px;
+  margin: 0 0 8px;
+  letter-spacing: -0.04em;
+}
+
+.fc-modal-subtitle {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.fc-qr-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 24px auto;
+  padding: 16px;
+  background: #04160a;
+  border: 1px solid rgba(57, 255, 20, 0.3);
+  border-radius: 16px;
+  width: fit-content;
+  box-shadow: 0 0 30px rgba(57, 255, 20, 0.1);
+}
+
+.fc-qr-loading {
+  width: 220px;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.fc-modal-status {
+  color: var(--green-dim);
+  font-size: 13px;
+  margin: 8px 0;
+  animation: pulse-green 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.fc-modal-error {
+  color: var(--danger);
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.fc-modal-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.fc-modal-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(57, 255, 20, 0.2);
+}
+
+.fc-open-warpcast-btn {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+  padding: 14px;
+  background: var(--green);
+  color: #001b06;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.3);
+  transition: box-shadow 0.2s;
+}
+
+.fc-open-warpcast-btn:hover {
+  box-shadow: 0 0 30px rgba(57, 255, 20, 0.5);
+}
+
+.fc-close-btn {
+  width: 100%;
+  margin: 8px 0 0;
+  padding: 12px;
+  background: rgba(57, 255, 20, 0.06);
+  color: var(--muted);
+  border: 1px solid rgba(57, 255, 20, 0.2);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.fc-close-btn:hover {
+  background: rgba(57, 255, 20, 0.12);
+  color: var(--text);
+}
+
 @media (max-width: 820px) {
   .shell { padding: 10px; }
   .hero-card { border-radius: 20px; min-height: calc(100vh - 20px); }
@@ -383,4 +535,11 @@ h2 {
   .actions { grid-template-columns: 1fr; }
   .primary, .secondary { width: 100%; }
   .status-row { grid-template-columns: 1fr; gap: 4px; }
+
+  .fc-modal {
+    min-width: auto;
+    max-width: calc(100vw - 32px);
+    margin: 16px;
+    padding: 24px;
+  }
 }
