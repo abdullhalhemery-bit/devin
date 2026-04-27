@@ -1,8 +1,5 @@
 {
-  "rewrites": [
-    { "source": "/admin", "destination": "/admin/index.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ],
+  "cleanUrls": true,
   "functions": {
     "api/**/*.js": {
       "includeFiles": "db/**"
