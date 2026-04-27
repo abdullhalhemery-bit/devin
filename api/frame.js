@@ -1,14 +1,14 @@
 // ═══════════════════════════════════════════════════════════
-//  /api/frame — Farcaster Frame server endpoint
+//  /api/frame — Farcaster Frame validation endpoint
 //
-//  Required for Farcaster to validate and render the frame
-//  when shared as a cast. Returns the frame HTML metadata.
+//  Farcaster sends a POST here when the frame button is clicked.
+//  Must return HTML with fc:frame meta tags.
 // ═══════════════════════════════════════════════════════════
 
 const FRAME_IMAGE = 'https://devin-pi.vercel.app/embed-preview.png';
 const FRAME_URL = 'https://devin-pi.vercel.app';
 
-function buildFrameHTML() {
+function frameHTML() {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -24,32 +24,13 @@ function buildFrameHTML() {
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:image" content="${FRAME_IMAGE}" />
 </head>
-<body>Frame validated</body>
 </html>`;
 }
 
 export default async function handler(req, res) {
-  if (req.method === 'GET') {
+  if (req.method === 'GET' || req.method === 'POST') {
     res.setHeader('Content-Type', 'text/html');
-    return res.status(200).send(buildFrameHTML());
+    return res.status(200).send(frameHTML());
   }
-
-  if (req.method === 'POST') {
-    // Farcaster sends a POST with untrustedData when button is clicked
-    const body = req.body || {};
-    const untrustedData = body.untrustedData || {};
-
-    console.log('[frame] POST:', JSON.stringify({
-      fid: untrustedData.fid,
-      buttonIndex: untrustedData.buttonIndex,
-      inputText: untrustedData.inputText,
-      castId: untrustedData.castId,
-    }));
-
-    // Return frame HTML that redirects to the app
-    res.setHeader('Content-Type', 'text/html');
-    return res.status(200).send(buildFrameHTML());
-  }
-
-  return res.status(405).json({ error: 'Method not allowed.' });
+  return res.status(405).send('Method not allowed');
 }
