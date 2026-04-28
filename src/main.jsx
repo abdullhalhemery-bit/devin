@@ -420,16 +420,26 @@ function App() {
       });
     } catch (switchError) {
       if (switchError.code === 4902) {
-        await walletProvider.request({
-          method: 'wallet_addEthereumChain',
-          params: [{
-            chainId: chainIdHex,
-            chainName,
-            nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
-            rpcUrls: [rpcUrl],
-            blockExplorerUrls: [blockExplorer],
-          }],
-        });
+        try {
+          await walletProvider.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: chainIdHex,
+              chainName,
+              nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
+              rpcUrls: [rpcUrl],
+              blockExplorerUrls: [blockExplorer],
+            }],
+          });
+        } catch (addError) {
+          if (isMiniApp) {
+            console.warn('wallet_addEthereumChain not supported in mini-app, continuing...');
+          } else {
+            throw addError;
+          }
+        }
+      } else if (isMiniApp) {
+        console.warn('wallet_switchEthereumChain not supported in mini-app, continuing...');
       } else {
         throw switchError;
       }
@@ -438,7 +448,7 @@ function App() {
 
   // ─── Get the raw provider (for JSON-RPC calls like wallet_switchEthereumChain) ───
   function getRawProvider() {
-    if (isMiniApp && web3Provider) return web3Provider.provider;
+    if (rawEipProvider) return rawEipProvider;
     return web3Provider?.provider;
   }
 

@@ -12,6 +12,8 @@
     "imageUrl": "https://devin-pi.vercel.app/embed-preview.png",
     "buttonTitle": "Claim $DEV",
     "splashImageUrl": "https://devin-pi.vercel.app/splash.png",
-    "splashBackgroundColor": "#030704"
+    "splashBackgroundColor": "#030704",
+    "requiredChains": ["eip155:8453", "eip155:10"],
+    "requiredCapabilities": ["wallet.getEthereumProvider"]
   }
 }
