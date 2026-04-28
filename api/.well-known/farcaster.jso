@@ -1,24 +1,18 @@
 {
+  "accountAssociation": {
+    "header": "eyJmaWQiOjE4ODc2NDksInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHhlZTBlMmIyZmQwREFkZGY1M0ZBNDFiMjdGREE4MzZDRDI5MDMxNTc0In0",
+    "payload": "eyJkb21haW4iOiJkZXZpbi1waS52ZXJjZWwuYXBwIn0",
+    "signature": "Gb4SayVaUki+ruaplFo/zXVP42ug5vy7l9eV1pz05gREF+irQ3qErhek91hZessVYkDWreO79k7WoDq45IKE2hw="
+  },
   "frame": {
-    "name": "https://devin-pi.vercel.app",
     "version": "1",
+    "name": "Example Frame",
     "iconUrl": "https://devin-pi.vercel.app/icon.png",
     "homeUrl": "https://devin-pi.vercel.app",
     "imageUrl": "https://devin-pi.vercel.app/image.png",
+    "buttonTitle": "Check this out",
     "splashImageUrl": "https://devin-pi.vercel.app/splash.png",
-    "splashBackgroundColor": "#080808",
-    "webhookUrl": "https://devin-pi.vercel.app/api/webhook",
-    "subtitle": "https://devin-pi.vercel.app/",
-    "description": "https://devin-pi.vercel.app/",
-    "primaryCategory": "entertainment",
-    "screenshotUrls": [
-      "https://devin-pi.vercel.app/"
-    ],
-    "heroImageUrl": "https://devin-pi.vercel.app/"
-  },
-  "accountAssociation": {
-    "header": "eyJmaWQiOjE5NDExNzQsInR5cGUiOiJhdXRoIiwia2V5IjoiMHhGQWIwYUM2QTk5NUM2NzRCMkM3MjJiOEY4RDhDZmRFYzhBODFCYTU5In0",
-    "payload": "eyJkb21haW4iOiJkZXZpbi1waS52ZXJjZWwuYXBwIn0",
-    "signature": "jove8XOSITxyE8YVBk4fD+UCNp+HkRRZfKriZs1m2KlNAtqyHnThf5U7mnNjzC2cR325w+WVnN5SsR2RSn5DnBw="
+    "splashBackgroundColor": "#eeccff",
+    "webhookUrl": "https://devin-pi.vercel.app/api/webhook"
   }
 }
