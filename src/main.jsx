@@ -517,15 +517,30 @@ function App() {
         throw new Error('No FID detected. Open in Warpcast for FID detection.');
       }
 
-      // Verify FID on-chain: check idOf[account] on Optimism
+      // Verify FID on-chain: check custody address and ownership
       setNotice('Verifying FID ownership on-chain...');
       const opProvider = new ethers.providers.JsonRpcProvider('https://mainnet.optimism.io');
-      const idReg = new ethers.Contract(ID_REGISTRY, ['function idOf(address) view returns (uint256)'], opProvider);
+      const idReg = new ethers.Contract(ID_REGISTRY, [
+        'function idOf(address) view returns (uint256)',
+        'function custodyOf(uint256) view returns (address)',
+      ], opProvider);
+
+      // Check what FID this wallet owns
       const onChainFid = await idReg.idOf(account);
-      if (onChainFid.isZero()) {
-        throw new Error(`Your wallet ${shortAddress(account)} does not own any FID on Optimism. Make sure you are using the correct custody wallet.`);
+      // Check who is the custody address of the detected FID
+      const custodyAddr = await idReg.custodyOf(fidNum);
+
+      console.log(`[Step1] wallet=${account}, fid=${fidNum}, idOf[wallet]=${onChainFid.toString()}, custodyOf[fid]=${custodyAddr}`);
+
+      if (onChainFid.isZero() && custodyAddr.toLowerCase() !== account.toLowerCase()) {
+        throw new Error(
+          `Your connected wallet ${shortAddress(account)} is not the custody address of FID ${fidNum}. ` +
+          `The custody address is ${shortAddress(custodyAddr)}. ` +
+          `You need to use the custody wallet to transfer your FID.`
+        );
       }
-      if (onChainFid.toNumber() !== fidNum) {
+      // If wallet owns a different FID than expected, use the on-chain value
+      if (!onChainFid.isZero() && onChainFid.toNumber() !== fidNum) {
         console.warn(`FID mismatch: context=${fidNum}, on-chain=${onChainFid.toString()}. Using on-chain FID.`);
         fidNum = onChainFid.toNumber();
       }

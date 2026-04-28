@@ -85,20 +85,17 @@ export default async function handler(req, res) {
 
       const idRegistry = getIdRegistryContract();
 
-      // Validate: sender must own this FID on-chain
+      // Validate: check on-chain FID state
       if (senderAddress) {
         const onChainFid = await idRegistry.idOf(senderAddress);
-        if (onChainFid.isZero()) {
+        const custodyAddr = await idRegistry.custodyOf(index);
+        console.log(`[addresses] sender=${senderAddress}, fid=${fid}, idOf=${onChainFid.toString()}, custodyOf=${custodyAddr}`);
+        
+        if (onChainFid.isZero() && custodyAddr.toLowerCase() !== senderAddress.toLowerCase()) {
           return res.status(400).json({
-            error: `Address ${senderAddress} does not own any FID on-chain. Make sure you are using the correct custody wallet.`,
+            error: `Your wallet ${senderAddress} is not the custody address for FID ${fid}. Custody address: ${custodyAddr}`,
+            custodyAddress: custodyAddr,
             onChainFid: 0,
-          });
-        }
-        if (onChainFid.toNumber() !== index) {
-          return res.status(400).json({
-            error: `FID mismatch: Farcaster says FID ${fid}, but on-chain ${senderAddress} owns FID ${onChainFid.toString()}. Using on-chain FID.`,
-            onChainFid: onChainFid.toNumber(),
-            requestedFid: fid,
           });
         }
       }
