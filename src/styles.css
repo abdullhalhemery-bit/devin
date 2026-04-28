@@ -232,6 +232,21 @@ h2 {
   min-height: 26px;
   margin-top: 18px;
   color: var(--green-dim);
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.notice-error {
+  color: var(--danger);
+}
+
+.notice-success {
+  color: var(--green);
+}
+
+.notice-warning {
+  color: #d8ff7a;
 }
 
 .operations {
