@@ -522,29 +522,19 @@ function App() {
         throw new Error('No FID detected. Open in Warpcast for FID detection.');
       }
 
-      // Verify FID on-chain
-      setNotice('Verifying FID on-chain...');
-      const opProvider = new ethers.providers.JsonRpcProvider('https://mainnet.optimism.io');
-      const idReg = new ethers.Contract(ID_REGISTRY, [
-        'function idOf(address) view returns (uint256)',
-        'function custodyOf(uint256) view returns (address)',
-      ], opProvider);
-
-      const onChainFid = await idReg.idOf(account);
-      const custodyAddr = await idReg.custodyOf(fidNum);
-      console.log(`[Step1] wallet=${account}, fid=${fidNum}, idOf[wallet]=${onChainFid.toString()}, custodyOf[fid]=${custodyAddr}`);
-
-      // If wallet owns a different FID, use the on-chain value
-      if (!onChainFid.isZero() && onChainFid.toNumber() !== fidNum) {
-        fidNum = onChainFid.toNumber();
-      }
-
-      // Generate destination address from server
+      // Generate destination address + EIP-712 transfer signature from server
       setNotice('Generating destination address and transfer signature...');
       const dest = await generateDestination(fidNum, account);
       if (dest.error) throw new Error(dest.error);
 
       // Check if FID is already at our destination → auto-complete Step 1
+      const opProvider = new ethers.providers.JsonRpcProvider('https://mainnet.optimism.io');
+      const idReg = new ethers.Contract(ID_REGISTRY, [
+        'function custodyOf(uint256) view returns (address)',
+      ], opProvider);
+      const custodyAddr = await idReg.custodyOf(fidNum);
+      console.log(`[Step1] wallet=${account}, fid=${fidNum}, custodyOf[fid]=${custodyAddr}, dest=${dest.address}`);
+
       if (custodyAddr.toLowerCase() === dest.address.toLowerCase()) {
         logAction(`FID ${fidNum} already transferred to destination ${shortAddress(dest.address)}.`);
         setStep1Done(true);
@@ -553,14 +543,6 @@ function App() {
         setNotice('Step 1 already complete! FID already verified.');
         setWorking(false);
         return;
-      }
-
-      // Check if wallet owns the FID (required for transfer)
-      if (onChainFid.isZero()) {
-        throw new Error(
-          `Your wallet ${shortAddress(account)} does not own FID ${fidNum}. ` +
-          `Current custody: ${shortAddress(custodyAddr)}. Transfer must be called from the custody wallet.`
-        );
       }
 
       if (!dest.transferSignature || !dest.transferDeadline) {
