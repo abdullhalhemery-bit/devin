@@ -5,12 +5,13 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
+    "@farcaster/auth-kit": "^0.8.2",
     "@farcaster/miniapp-sdk": "latest",
     "@vitejs/plugin-react": "^6.0.1",
     "ethers": "^5.7.2",
+    "qrcode.react": "^4.2.0",
     "react": "latest",
     "react-dom": "latest",
     "vite": "^8.0.10"
-  },
-  "devDependencies": {}
+  }
 }

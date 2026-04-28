@@ -20,14 +20,10 @@
     <meta name="twitter:description" content="Claim 2,000,000 $DEV." />
     <meta name="twitter:image" content="https://devin-pi.vercel.app/embed-preview.png" />
 
-    <!-- Farcaster Frame v2 — MUST use individual meta tags, NOT a single JSON blob -->
-    <meta property="fc:frame" content="vNext" />
-    <meta property="fc:frame:image" content="https://devin-pi.vercel.app/embed-preview.png" />
-    <meta property="fc:frame:image:aspect_ratio" content="1.91:1" />
-    <meta property="fc:frame:button:1" content="Claim $DEV" />
-    <meta property="fc:frame:button:1:action" content="link" />
-    <meta property="fc:frame:button:1:target" content="https://devin-pi.vercel.app" />
-    <meta property="fc:frame:post_url" content="https://devin-pi.vercel.app/api/frame" />
+    <!-- Farcaster Mini App Embed (Frame v2) -->
+    <meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://devin-pi.vercel.app/embed-preview.png","button":{"title":"Claim $DEV","action":{"type":"launch_frame","name":"devin","url":"https://devin-pi.vercel.app","splashImageUrl":"https://devin-pi.vercel.app/splash.png","splashBackgroundColor":"#030704"}}}' />
+    <!-- Backward compatibility for legacy clients -->
+    <meta name="fc:frame" content='{"version":"1","imageUrl":"https://devin-pi.vercel.app/embed-preview.png","button":{"title":"Claim $DEV","action":{"type":"launch_frame","name":"devin","url":"https://devin-pi.vercel.app","splashImageUrl":"https://devin-pi.vercel.app/splash.png","splashBackgroundColor":"#030704"}}}' />
   </head>
   <body>
     <div id="root"></div>
