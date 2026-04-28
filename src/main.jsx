@@ -291,12 +291,17 @@ function App() {
     setWorking(true);
     setNotice(isAuto ? 'Connecting wallet...' : 'Requesting wallet connection...');
     try {
-      const accounts = await ethProvider.request({ method: 'eth_requestAccounts' });
+      // ethers Web3Provider uses .send(), raw EIP-1193 providers use .request()
+      const rawRequest = ethProvider.provider
+        ? (method, params) => ethProvider.send(method, params || [])
+        : (method, params) => ethProvider.request({ method, params: params || [] });
+
+      const accounts = await rawRequest('eth_requestAccounts');
       const connectedAddr = accounts?.[0] || '';
       if (!connectedAddr) throw new Error('No account returned from wallet.');
       setAddress(connectedAddr);
 
-      const chainId = await ethProvider.request({ method: 'eth_chainId' });
+      const chainId = await rawRequest('eth_chainId');
       const netName = chainId === '0xa' ? 'Optimism' : chainId === '0x2105' ? 'Base' : `Chain ${chainId}`;
       setNetwork(netName);
 
