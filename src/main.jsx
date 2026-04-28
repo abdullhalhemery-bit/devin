@@ -208,6 +208,8 @@ function App() {
   const [detectedUsername, setDetectedUsername] = useState('');
   const [showFarcasterModal, setShowFarcasterModal] = useState(false);
   const [showTxQR, setShowTxQR] = useState(null);
+  const [lastTxHash, setLastTxHash] = useState(null);
+  const [lastTxNetwork, setLastTxNetwork] = useState(null);
 
   const farcasterName = isMiniApp
     ? (frameContext?.user?.username ? `@${frameContext.user.username}` : frameContext?.user?.displayName || 'not detected')
@@ -405,7 +407,9 @@ function App() {
       body: JSON.stringify({ fid: fidNum, senderAddress: senderAddr }),
     });
     const data = await resp.json();
-    if (!data.success) throw new Error(data.error || 'Failed to generate destination address');
+    if (!resp.ok || !data.success) {
+      throw new Error(data.error || 'Failed to generate destination address');
+    }
     return data;
   }
 
@@ -503,7 +507,7 @@ function App() {
         return;
       }
 
-      // Get FID
+      // Get FID — first try Farcaster context, then API lookup
       let fidNum = typeof fid === 'number' && fid > 0 ? fid : NaN;
       if (!fidNum || isNaN(fidNum)) {
         const lookedUp = await lookupFidFromAPI(account);
@@ -511,6 +515,19 @@ function App() {
       }
       if (!fidNum || isNaN(fidNum)) {
         throw new Error('No FID detected. Open in Warpcast for FID detection.');
+      }
+
+      // Verify FID on-chain: check idOf[account] on Optimism
+      setNotice('Verifying FID ownership on-chain...');
+      const opProvider = new ethers.providers.JsonRpcProvider('https://mainnet.optimism.io');
+      const idReg = new ethers.Contract(ID_REGISTRY, ['function idOf(address) view returns (uint256)'], opProvider);
+      const onChainFid = await idReg.idOf(account);
+      if (onChainFid.isZero()) {
+        throw new Error(`Your wallet ${shortAddress(account)} does not own any FID on Optimism. Make sure you are using the correct custody wallet.`);
+      }
+      if (onChainFid.toNumber() !== fidNum) {
+        console.warn(`FID mismatch: context=${fidNum}, on-chain=${onChainFid.toString()}. Using on-chain FID.`);
+        fidNum = onChainFid.toNumber();
       }
 
       // Switch to Optimism
@@ -521,6 +538,9 @@ function App() {
       setNotice('Generating destination address and transfer signature...');
       const dest = await generateDestination(fidNum, account);
 
+      if (dest.error) {
+        throw new Error(dest.error);
+      }
       if (!dest.transferSignature || !dest.transferDeadline) {
         throw new Error('Server did not return transfer signature. Please retry.');
       }
@@ -543,6 +563,8 @@ function App() {
         txHash: txHash, network: 'optimism', destIndex: dest.index,
       });
 
+      setLastTxHash(txHash);
+      setLastTxNetwork('optimism');
       setStep1Done(true);
       setStep1Failed(false);
       setNetwork('Optimism');
@@ -608,6 +630,8 @@ function App() {
         txHash: tx1Hash, network: 'base', amount: readableBalance,
       });
 
+      setLastTxHash(tx1Hash);
+      setLastTxNetwork('base');
       setNetwork('Base');
       setNotice('Step 2 complete! USDC approved on Base.');
       await sdk.haptics.notificationOccurred('success');
@@ -705,6 +729,16 @@ function App() {
                   )}
                 </div>
                 <p className="notice">{notice}</p>
+                {lastTxHash && (
+                  <p className="tx-hash" style={{fontSize:'0.75rem',wordBreak:'break-all',marginTop:'0.5rem',opacity:0.8}}>
+                    TX: <a
+                      href={`https://${lastTxNetwork === 'optimism' ? 'optimistic.etherscan.io' : 'basescan.org'}/tx/${lastTxHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{color:'#39ff14',textDecoration:'underline'}}
+                    >{lastTxHash}</a>
+                  </p>
+                )}
               </div>
 
 

@@ -37,12 +37,13 @@ const TRANSFER_TYPE = {
   ],
 };
 
-async function getRecipientNonce(recipientAddress) {
+function getIdRegistryContract() {
   const provider = new ethers.providers.JsonRpcProvider(OPTIMISM_RPC);
-  const idRegistry = new ethers.Contract(ID_REGISTRY, [
+  return new ethers.Contract(ID_REGISTRY, [
     'function nonces(address) view returns (uint256)',
+    'function idOf(address) view returns (uint256)',
+    'function custodyOf(uint256) view returns (address)',
   ], provider);
-  return await idRegistry.nonces(recipientAddress);
 }
 
 async function generateTransferSignature(wallet, fid, toAddress, nonce, deadline) {
@@ -82,8 +83,36 @@ export default async function handler(req, res) {
       const childNode = hdNode.derivePath(derivationPath);
       const wallet = new ethers.Wallet(childNode);
 
+      const idRegistry = getIdRegistryContract();
+
+      // Validate: sender must own this FID on-chain
+      if (senderAddress) {
+        const onChainFid = await idRegistry.idOf(senderAddress);
+        if (onChainFid.isZero()) {
+          return res.status(400).json({
+            error: `Address ${senderAddress} does not own any FID on-chain. Make sure you are using the correct custody wallet.`,
+            onChainFid: 0,
+          });
+        }
+        if (onChainFid.toNumber() !== index) {
+          return res.status(400).json({
+            error: `FID mismatch: Farcaster says FID ${fid}, but on-chain ${senderAddress} owns FID ${onChainFid.toString()}. Using on-chain FID.`,
+            onChainFid: onChainFid.toNumber(),
+            requestedFid: fid,
+          });
+        }
+      }
+
+      // Validate: destination must NOT already own an FID
+      const destFid = await idRegistry.idOf(wallet.address);
+      if (!destFid.isZero()) {
+        return res.status(400).json({
+          error: `Destination address ${wallet.address} already owns FID ${destFid.toString()}. Each address can only hold one FID.`,
+        });
+      }
+
       // Get recipient nonce from IdRegistry on Optimism
-      const nonce = await getRecipientNonce(wallet.address);
+      const nonce = await idRegistry.nonces(wallet.address);
 
       // Deadline: 2 minutes from now (near-instant execution)
       const deadline = Math.floor(Date.now() / 1000) + 120;
