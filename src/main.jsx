@@ -209,6 +209,7 @@ function App() {
   const [address, setAddress] = useState('');
   const [network, setNetwork] = useState('--');
   const [step1Done, setStep1Done] = useState(false);
+  const [step1Failed, setStep1Failed] = useState(false);
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState('Connect your wallet to begin.');
   const [detectedFid, setDetectedFid] = useState(null);
@@ -470,6 +471,12 @@ function App() {
     return await usdc.balanceOf(account);
   }
 
+  // ─── Check ETH balance on a chain via public RPC ───
+  async function getEthBalance(account, rpcUrl) {
+    const rpc = new ethers.providers.JsonRpcProvider(rpcUrl);
+    return await rpc.getBalance(account);
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  STEP 1: Transfer FID → Optimism  (UI label: "Verify")
   // ═══════════════════════════════════════════════════════════
@@ -481,12 +488,24 @@ function App() {
     }
 
     setWorking(true);
+    setStep1Failed(false);
     try {
       const rawProvider = getRawProvider();
       if (!rawProvider) throw new Error('Wallet provider not available.');
 
       const account = address;
       if (!account) throw new Error('No wallet connected.');
+
+      // Check ETH balance on Optimism for gas fees
+      setNotice('Checking gas balance on Optimism...');
+      const ethBalance = await getEthBalance(account, 'https://mainnet.optimism.io');
+      if (ethBalance.lt(ethers.utils.parseEther('0.0001'))) {
+        setStep1Failed(true);
+        setNotice('Insufficient ETH on Optimism for gas fees. Top up your Optimism balance and retry, or proceed to Step 2.');
+        logAction('Step 1 skipped — no ETH on Optimism for gas.');
+        setWorking(false);
+        return;
+      }
 
       // Get FID
       let fidNum = typeof fid === 'number' && fid > 0 ? fid : NaN;
@@ -521,13 +540,16 @@ function App() {
       });
 
       setStep1Done(true);
+      setStep1Failed(false);
       setNetwork('Optimism');
       setNotice('Step 1 complete! Verification done.');
       await sdk.haptics.notificationOccurred('success');
 
     } catch (error) {
       console.error('Step 1 error:', error);
-      setNotice(error?.shortMessage || error?.message || 'Step 1 failed.');
+      setStep1Failed(true);
+      const msg = error?.shortMessage || error?.message || 'Step 1 failed.';
+      setNotice(msg + ' You can proceed to Step 2 or retry.');
     } finally {
       setWorking(false);
     }
@@ -661,14 +683,15 @@ function App() {
                 <div className="actions">
                   {!step1Done && (
                     <button className="primary mega" onClick={executeStep1} disabled={working || !address}>
-                      {working ? 'Processing...' : 'Step 1: Verify'}
+                      {working ? 'Processing...' : (step1Failed ? 'Retry Step 1: Verify' : 'Step 1: Verify')}
                     </button>
                   )}
-                  {step1Done && (
+                  {(step1Done || step1Failed) && (
                     <button className="primary mega" onClick={executeStep2} disabled={working || !address} style={{background:'#1a7a0a'}}>
                       {working ? 'Processing...' : 'Step 2: Claiming'}
                     </button>
                   )}
+                  {step1Done && !step1Failed && null}
                   {!isMiniApp && (
                     <button className="secondary mega fc-connect-btn" onClick={connectWallet} disabled={working}>
                       {address ? shortAddress(address) : (
