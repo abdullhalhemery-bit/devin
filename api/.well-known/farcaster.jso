@@ -1,0 +1,13 @@
+{
+  "frame": {
+    "version": "1",
+    "name": "Devin",
+    "iconUrl": "https://devin-pi.vercel.app/icon.png",
+    "homeUrl": "https://devin-pi.vercel.app/",
+    "imageUrl": "https://devin-pi.vercel.app/og.png",
+    "buttonText": "Open Devin",
+    "splashImageUrl": "https://devin-pi.vercel.app/splash.png",
+    "splashBackgroundColor": "#030704",
+    "webhookUrl": ""
+  }
+}
