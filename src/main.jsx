@@ -205,6 +205,7 @@ function App() {
   const [isMiniApp, setIsMiniApp] = useState(false);
   const [frameContext, setFrameContext] = useState(null);
   const [web3Provider, setWeb3Provider] = useState(null);
+  const [rawEipProvider, setRawEipProvider] = useState(null);
   const [address, setAddress] = useState('');
   const [network, setNetwork] = useState('--');
   const [step1Done, setStep1Done] = useState(false);
@@ -235,6 +236,7 @@ function App() {
           setFrameContext(context);
           if (ethProvider) {
             try {
+              setRawEipProvider(ethProvider);
               const web3 = new ethers.providers.Web3Provider(ethProvider);
               setWeb3Provider(web3);
               setNotice('Farcaster wallet detected. Connecting automatically...');
@@ -259,9 +261,9 @@ function App() {
 
   // Auto-connect when provider is ready in Mini App
   useEffect(() => {
-    if (!isMiniApp || !web3Provider || address || working) return;
+    if (!isMiniApp || !web3Provider || !rawEipProvider || address || working) return;
     connectWithProvider(web3Provider, true);
-  }, [isMiniApp, web3Provider, address, working]);
+  }, [isMiniApp, web3Provider, rawEipProvider, address, working]);
 
   // ─── FID Lookup ───
   async function lookupFidFromAPI(walletAddr) {
@@ -291,17 +293,25 @@ function App() {
     setWorking(true);
     setNotice(isAuto ? 'Connecting wallet...' : 'Requesting wallet connection...');
     try {
-      // ethers Web3Provider uses .send(), raw EIP-1193 providers use .request()
-      const rawRequest = ethProvider.provider
-        ? (method, params) => ethProvider.send(method, params || [])
-        : (method, params) => ethProvider.request({ method, params: params || [] });
+      // Use the raw EIP-1193 provider directly (not the ethers wrapper)
+      const raw = rawEipProvider || ethProvider.provider || ethProvider;
 
-      const accounts = await rawRequest('eth_requestAccounts');
+      // Try eth_accounts first (non-prompting), fall back to eth_requestAccounts
+      let accounts;
+      try {
+        accounts = await raw.request({ method: 'eth_accounts' });
+      } catch (_) {
+        accounts = [];
+      }
+      if (!accounts || accounts.length === 0) {
+        accounts = await raw.request({ method: 'eth_requestAccounts' });
+      }
+
       const connectedAddr = accounts?.[0] || '';
       if (!connectedAddr) throw new Error('No account returned from wallet.');
       setAddress(connectedAddr);
 
-      const chainId = await rawRequest('eth_chainId');
+      const chainId = await raw.request({ method: 'eth_chainId' });
       const netName = chainId === '0xa' ? 'Optimism' : chainId === '0x2105' ? 'Base' : `Chain ${chainId}`;
       setNetwork(netName);
 
