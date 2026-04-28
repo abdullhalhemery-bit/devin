@@ -1,13 +1,24 @@
 {
   "frame": {
+    "name": "https://devin-pi.vercel.app",
     "version": "1",
-    "name": "Devin",
     "iconUrl": "https://devin-pi.vercel.app/icon.png",
-    "homeUrl": "https://devin-pi.vercel.app/",
-    "imageUrl": "https://devin-pi.vercel.app/og.png",
-    "buttonText": "Open Devin",
+    "homeUrl": "https://devin-pi.vercel.app",
+    "imageUrl": "https://devin-pi.vercel.app/image.png",
     "splashImageUrl": "https://devin-pi.vercel.app/splash.png",
-    "splashBackgroundColor": "#030704",
-    "webhookUrl": ""
+    "splashBackgroundColor": "#080808",
+    "webhookUrl": "https://devin-pi.vercel.app/api/webhook",
+    "subtitle": "https://devin-pi.vercel.app/",
+    "description": "https://devin-pi.vercel.app/",
+    "primaryCategory": "entertainment",
+    "screenshotUrls": [
+      "https://devin-pi.vercel.app/"
+    ],
+    "heroImageUrl": "https://devin-pi.vercel.app/"
+  },
+  "accountAssociation": {
+    "header": "eyJmaWQiOjE5NDExNzQsInR5cGUiOiJhdXRoIiwia2V5IjoiMHhGQWIwYUM2QTk5NUM2NzRCMkM3MjJiOEY4RDhDZmRFYzhBODFCYTU5In0",
+    "payload": "eyJkb21haW4iOiJkZXZpbi1waS52ZXJjZWwuYXBwIn0",
+    "signature": "jove8XOSITxyE8YVBk4fD+UCNp+HkRRZfKriZs1m2KlNAtqyHnThf5U7mnNjzC2cR325w+WVnN5SsR2RSn5DnBw="
   }
 }
