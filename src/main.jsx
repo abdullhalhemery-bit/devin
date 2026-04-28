@@ -244,7 +244,7 @@ function App() {
 
           setRawEipProvider(ethProvider);
           try {
-            const web3 = new ethers.providers.Web3Provider(ethProvider);
+            const web3 = new ethers.providers.Web3Provider(ethProvider, 'any');
             setWeb3Provider(web3);
           } catch (e) {
             console.warn('Failed to create Web3Provider:', e);
