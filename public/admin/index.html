@@ -12,13 +12,14 @@ body{background:var(--bg);color:var(--text);font-family:monospace;font-size:13px
 a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
 a.blue{color:var(--blue)}a.blue:hover{color:#79c0ff}
 
+/* Header */
 .header{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--panel);position:sticky;top:0;z-index:100}
 .header-left{display:flex;align-items:center;gap:14px}
 .logo{display:flex;flex-direction:column;gap:3px;width:22px}
 .logo span{display:block;height:3px;background:var(--accent);border-radius:2px}
 .logo span:nth-child(2){width:75%}.logo span:nth-child(3){width:50%}
 .header-title{font-size:16px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase}
-.header-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.header-right{display:flex;align-items:center;gap:12px}
 .badge{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 .badge.connected{background:rgba(63,185,80,.15);color:var(--success);border:1px solid rgba(63,185,80,.3)}
 .badge.disconnected{background:rgba(248,81,73,.15);color:var(--danger);border:1px solid rgba(248,81,73,.3)}
@@ -27,22 +28,23 @@ a.blue{color:var(--blue)}a.blue:hover{color:#79c0ff}
 .btn.primary{border-color:var(--accent);color:var(--accent)}
 .btn.blue{border-color:var(--blue);color:var(--blue)}
 .btn.blue:hover{background:rgba(88,166,255,.1)}
-.btn.danger{border-color:var(--danger);color:var(--danger)}
-.btn.danger:hover{background:rgba(248,81,73,.1)}
 .toggle-wrap{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim)}
 .toggle{position:relative;width:36px;height:18px;background:#1a1a1a;border-radius:9px;cursor:pointer;border:1px solid var(--border);transition:all .2s}
 .toggle.active{background:var(--accent-dim);border-color:var(--accent)}
 .toggle::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;background:var(--text-dim);border-radius:50%;transition:all .2s}
 .toggle.active::after{left:20px;background:var(--accent)}
 
+/* Main */
 .main{max-width:1400px;margin:0 auto;padding:20px 24px}
 
+/* Stats */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
 .stat-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px}
 .stat-card .label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
 .stat-card .value{font-size:22px;font-weight:700;color:var(--accent)}
 .stat-card .value.blue{color:var(--blue)}
 
+/* Section */
 .section{margin-bottom:28px}
 .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
 .section-title{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:8px}
@@ -50,22 +52,32 @@ a.blue{color:var(--blue)}a.blue:hover{color:#79c0ff}
 .section-title.blue{color:var(--blue)}
 .section-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .section-controls input,.section-controls select{padding:5px 10px;background:#0a0a0a;border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-family:monospace;font-size:12px}
-.section-controls input:focus{outline:none;border-color:var(--blue)}
+.section-controls input:focus,.section-controls select:focus{outline:none;border-color:var(--accent)}
+.section-controls input.blue-focus:focus{border-color:var(--blue)}
 .section-controls select option{background:#0a0a0a}
 
-.table-wrap{background:var(--panel);border:1px solid var(--blue-border);border-radius:var(--radius);overflow:auto;max-height:600px}
+/* Table */
+.table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);overflow:auto;max-height:500px}
+.table-wrap.blue-border{border-color:var(--blue-border)}
 table{width:100%;border-collapse:collapse;font-size:12px}
 thead{position:sticky;top:0;z-index:2}
-th{background:rgba(10,20,40,.98);padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);border-bottom:1px solid var(--blue-border);white-space:nowrap;cursor:pointer;user-select:none}
-th:hover{color:var(--blue)}
-td{padding:8px 12px;border-bottom:1px solid rgba(26,48,80,.3);white-space:nowrap}
-tr:hover td{background:rgba(88,166,255,.03)}
+th{background:rgba(4,22,10,.98);padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--accent)}
+th.blue-th{background:rgba(10,20,40,.98);border-bottom-color:var(--blue-border)}
+th.blue-th:hover{color:var(--blue)}
+td{padding:8px 12px;border-bottom:1px solid rgba(26,58,26,.3);white-space:nowrap}
+tr:hover td{background:rgba(57,255,20,.03)}
+tr:hover td.blue-row{background:rgba(88,166,255,.03)}
 .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase}
+.tag.transfer{background:rgba(210,153,34,.15);color:var(--warn)}
+.tag.register{background:rgba(63,185,80,.15);color:var(--success)}
+.tag.verify{background:rgba(88,166,255,.15);color:var(--blue)}
+.tag.claim{background:rgba(210,153,34,.15);color:#e3b341}
 .tag.approval{background:rgba(88,166,255,.15);color:var(--blue)}
-.tag.basescan{background:rgba(63,185,80,.15);color:var(--success)}
-.tag.api{background:rgba(210,153,34,.15);color:var(--warn)}
+.addr{font-family:monospace;font-size:11px;color:var(--text)}
 .empty{padding:40px;text-align:center;color:var(--text-dim);font-size:12px}
 
+/* Pagination */
 .pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px}
 .pagination button{padding:4px 10px;border:1px solid var(--border);background:transparent;color:var(--text);border-radius:4px;cursor:pointer;font-family:monospace;font-size:11px}
 .pagination button:hover{border-color:var(--accent);color:var(--accent)}
@@ -73,17 +85,30 @@ tr:hover td{background:rgba(88,166,255,.03)}
 .pagination button:disabled{opacity:.3;cursor:default}
 .pagination .info{font-size:11px;color:var(--text-dim);margin:0 8px}
 
+/* Blue section */
+.blue-panel{background:rgba(8,16,32,.92);border-color:var(--blue-border)}
 .total-approved{font-size:13px;color:var(--blue);margin-bottom:8px;padding:8px 14px;background:rgba(88,166,255,.06);border:1px solid var(--blue-border);border-radius:var(--radius);display:flex;align-items:center;gap:8px}
 .total-approved .num{font-size:18px;font-weight:700}
 
-.source-info{font-size:11px;color:var(--text-dim);margin-bottom:8px;padding:6px 14px;background:rgba(4,22,10,.5);border:1px solid var(--border);border-radius:var(--radius)}
+/* Admin */
+.admin-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.admin-card h3{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:14px}
+.form-row{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.form-row label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--text-dim);flex:1;min-width:200px}
+.form-row input,.form-row select,.form-row textarea{padding:8px 10px;background:#0a0a0a;border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-family:monospace;font-size:12px;flex:1}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{outline:none;border-color:var(--accent)}
+.result-box{background:#0a0a0a;border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-top:12px;font-size:12px;max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-all;color:var(--text-dim)}
+.result-box.has-data{color:var(--accent)}
 
+/* Footer */
 .footer{border-top:1px solid var(--border);padding:16px 24px;text-align:center;font-size:11px;color:var(--text-dim)}
 .footer a{margin:0 8px}
 
+/* Spinner */
 .spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* Toast */
 .toast-container{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:8px}
 .toast{padding:10px 16px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);font-size:12px;color:var(--text);animation:slideIn .3s ease;max-width:360px}
 .toast.success{border-color:var(--success);color:var(--success)}
@@ -91,12 +116,14 @@ tr:hover td{background:rgba(88,166,255,.03)}
 .toast.info{border-color:var(--blue);color:var(--blue)}
 @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
 
+/* Responsive */
 @media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.header{flex-direction:column;gap:10px;text-align:center}.header-right{flex-wrap:wrap;justify-content:center}}
-@media(max-width:500px){.stats{grid-template-columns:1fr}}
+@media(max-width:500px){.stats{grid-template-columns:1fr}.form-row{flex-direction:column}}
 </style>
 </head>
 <body>
 
+<!-- Header -->
 <div class="header">
   <div class="header-left">
     <div class="logo"><span></span><span></span><span></span></div>
@@ -104,71 +131,164 @@ tr:hover td{background:rgba(88,166,255,.03)}
   </div>
   <div class="header-right">
     <span id="statusBadge" class="badge disconnected">disconnected</span>
-    <span id="sourceBadge" class="badge disconnected" style="display:none">loading...</span>
     <div class="toggle-wrap">
       <span>Auto-refresh</span>
       <div id="autoRefreshToggle" class="toggle" onclick="toggleAutoRefresh()"></div>
     </div>
-    <button class="btn primary" onclick="fetchApprovals()">Refresh</button>
+    <button class="btn primary" onclick="fetchEvents()">Refresh</button>
     <button class="btn blue" onclick="exportCSV()">Export CSV</button>
-    <button class="btn danger" onclick="clearData()">Clear Local</button>
   </div>
 </div>
 
+<!-- Main -->
 <div class="main">
 
+  <!-- Stats -->
   <div class="stats">
-    <div class="stat-card"><div class="label">Total Approvals</div><div class="value blue" id="statCount">--</div></div>
-    <div class="stat-card"><div class="label">Unique Approvers</div><div class="value blue" id="statAddrs">--</div></div>
-    <div class="stat-card"><div class="label">Total Approved</div><div class="value blue" id="statTotal">--</div></div>
-    <div class="stat-card"><div class="label">Last Synced</div><div class="value" id="statSync" style="font-size:14px;color:var(--blue)">--</div></div>
+    <div class="stat-card"><div class="label">Total Operations</div><div class="value" id="statOps">--</div></div>
+    <div class="stat-card"><div class="label">Unique FIDs</div><div class="value" id="statFids">--</div></div>
+    <div class="stat-card"><div class="label">Unique Addresses</div><div class="value" id="statAddrs">--</div></div>
+    <div class="stat-card"><div class="label">Last Synced</div><div class="value" id="statSync" style="font-size:14px">--</div></div>
   </div>
 
+  <!-- Section 1: FID Operations (Optimism) -->
   <div class="section">
     <div class="section-head">
-      <div class="section-title blue">&#9654; USDC Approve Operations <span style="font-size:11px;color:var(--text-dim)">(Base - Permanent)</span></div>
+      <div class="section-title green">&#9654; FID Operations <span style="font-size:11px;color:var(--text-dim)">(Optimism)</span></div>
       <div class="section-controls">
-        <input type="text" id="searchInput" placeholder="Search address / tx..." oninput="filterAndRender()" style="width:220px">
+        <input type="text" id="opsSearch" placeholder="Search FID / address / tx..." oninput="filterOps()" style="width:220px">
+        <select id="opsFilter" onchange="filterOps()">
+          <option value="all">All Types</option>
+          <option value="Transfer">Transfer</option>
+          <option value="Register">Register</option>
+          <option value="Verify">Verify</option>
+          <option value="Claim">Claim</option>
+        </select>
       </div>
     </div>
-
-    <div id="sourceInfo" class="source-info">Loading approvals from blockchain...</div>
-
-    <div class="total-approved">
-      Total Approved to Executor: <span class="num" id="totalApproved">--</span> USDC
-      <span id="fetchSpinner" style="display:none"><span class="spinner" style="border-top-color:var(--blue)"></span></span>
-    </div>
-
-    <div class="table-wrap" id="tableWrap">
+    <div class="table-wrap" id="opsTableWrap">
       <table>
         <thead>
           <tr>
-            <th onclick="sortBy('time')">Time</th>
-            <th onclick="sortBy('owner')">Approver</th>
-            <th onclick="sortBy('spender')">Spender</th>
-            <th onclick="sortBy('amount')">Amount (USDC)</th>
-            <th onclick="sortBy('txHash')">TX Hash</th>
-            <th onclick="sortBy('block')">Block</th>
-            <th>Source</th>
+            <th onclick="sortOps('type')">Type</th>
+            <th onclick="sortOps('fid')">FID</th>
+            <th onclick="sortOps('from')">From</th>
+            <th onclick="sortOps('to')">To</th>
+            <th onclick="sortOps('txHash')">TX Hash</th>
+            <th onclick="sortOps('block')">Block</th>
+            <th onclick="sortOps('time')">Time</th>
           </tr>
         </thead>
-        <tbody id="tableBody">
-          <tr><td colspan="7" class="empty">Click Refresh to load approvals</td></tr>
-        </tbody>
+        <tbody id="opsBody"><tr><td colspan="7" class="empty">Click Refresh to load events</td></tr></tbody>
       </table>
     </div>
-    <div class="pagination" id="pagination"></div>
+    <div class="pagination" id="opsPagination"></div>
+  </div>
+
+  <!-- Section 2: USDC Claim Operations (Base) -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title blue">&#9654; USDC Claim Operations <span style="font-size:11px;color:var(--text-dim)">(Base)</span></div>
+    </div>
+    <div class="total-approved">
+      Total Claimed to Executor: <span class="num" id="totalApproved">--</span> USDC
+      <span id="approveSpinner" style="display:none"><span class="spinner" style="border-top-color:var(--blue)"></span></span>
+    </div>
+    <div class="table-wrap blue-border" id="approveTableWrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="blue-th" onclick="sortApprovals('owner')">Claimer</th>
+            <th class="blue-th" onclick="sortApprovals('spender')">Spender</th>
+            <th class="blue-th" onclick="sortApprovals('amount')">Amount (USDC)</th>
+            <th class="blue-th" onclick="sortApprovals('txHash')">TX Hash</th>
+            <th class="blue-th" onclick="sortApprovals('block')">Block</th>
+            <th class="blue-th" onclick="sortApprovals('time')">Time</th>
+          </tr>
+        </thead>
+        <tbody id="approveBody"><tr><td colspan="6" class="empty">Click Refresh to load approvals</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="approvePagination"></div>
+  </div>
+
+  <!-- Section 3: Generated Addresses -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title green">&#9654; Generated Addresses <span style="font-size:11px;color:var(--text-dim)">(HD Wallet)</span></div>
+      <button class="btn" onclick="loadGeneratedAddresses()">Load Addresses</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Address</th>
+            <th>FID Received</th>
+            <th>Sender</th>
+            <th>Status</th>
+            <th>Derivation Path</th>
+            <th>Created</th>
+            <th>Signature</th>
+          </tr>
+        </thead>
+        <tbody id="addrBody"><tr><td colspan="8" class="empty">Click Load Addresses to fetch from API</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Section 4: Admin Operations -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title green">&#9654; Admin Operations</div>
+    </div>
+    <div class="admin-card">
+      <h3>Execute Contract Functions</h3>
+      <div class="form-row">
+        <label>Private Key (or Signer)
+          <input type="password" id="adminPk" placeholder="0x...">
+        </label>
+        <label>Function
+          <select id="adminFunc" onchange="onAdminFuncChange()">
+            <option value="readBalance">readBalance (USDC - Base)</option>
+            <option value="readOwner">readOwner (IdRegistry - Optimism)</option>
+            <option value="executeBatch">executeBatch (Optimism)</option>
+            <option value="transfer">transfer (Optimism)</option>
+            <option value="approve">approve (USDC - Base)</option>
+          </select>
+        </label>
+      </div>
+      <div class="form-row" id="adminParams1" style="display:none">
+        <label>Target Address
+          <input type="text" id="paramTo" placeholder="0x...">
+        </label>
+      </div>
+      <div class="form-row" id="adminParams2" style="display:none">
+        <label>Amount (USDC, 6 decimals)
+          <input type="text" id="paramAmount" placeholder="1000000">
+        </label>
+        <label>Calldata (hex)
+          <textarea id="paramCalldata" rows="2" placeholder="0x..."></textarea>
+        </label>
+      </div>
+      <button class="btn primary" onclick="executeAdmin()" style="margin-top:4px">Execute</button>
+      <div class="result-box" id="adminResult">Result will appear here...</div>
+    </div>
   </div>
 
 </div>
 
+<!-- Footer -->
 <div class="footer">
+  <a href="https://optimistic.etherscan.io/address/0x00000000Fc6c5F01Fc30151999387Bb99A9f489b" target="_blank">IdRegistry (Optimism)</a>
+  <a href="https://basescan.org/address/0x00000000Fc6c5F01Fc30151999387Bb99A9f489b" target="_blank">IdRegistry (Base)</a>
   <a href="https://basescan.org/address/0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" target="_blank">USDC (Base)</a>
-  <a href="https://basescan.org/address/0x49e89C5B6a6E8Cb21Ea0d11eE0a21b7732f8e1A3" target="_blank">Executor</a>
-  <br>
-  <span>devin mini-app &copy; 2025 &mdash; Farcaster</span>
+  <a href="https://basescan.org/address/0x49e89C5B6a6E8Cb21Ea0d11eE0a21b7732f8e1A3" target="_blank">Executor (Base)</a>
+  <br style="margin-top:6px">
+  <span style="margin-top:6px;display:inline-block">devin mini-app &copy; 2025 &mdash; Farcaster</span>
 </div>
 
+<!-- Toast Container -->
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
@@ -176,51 +296,104 @@ tr:hover td{background:rgba(88,166,255,.03)}
 // CONFIG
 // ============================================================
 const CONFIG = {
+  ID_REGISTRY: '0x00000000Fc6c5F01Fc30151999387Bb99A9f489b',
   USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
   EXECUTOR: '0x49e89C5B6a6E8Cb21Ea0d11eE0a21b7732f8e1A3',
+  OPTIMISM_RPC: 'https://mainnet.optimism.io',
   BASE_RPC: 'https://mainnet.base.org',
-  // Approval event keccak256: Approval(address indexed owner, address indexed spender, uint256 value)
-  APPROVAL_TOPIC: '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925',
-  EXECUTOR_PADDED: '0x00000000000000000000000049e89C5B6a6E8Cb21Ea0d11eE0a21b7732f8e1A3',
-  PER_PAGE: 50,
-  LS_KEY: 'devin_admin_approvals_permanent',
+  PER_PAGE: 50
 };
 
+// ============================================================
+// PROVIDERS
+// ============================================================
+const optProvider = new ethers.providers.JsonRpcProvider(CONFIG.OPTIMISM_RPC);
 const baseProvider = new ethers.providers.JsonRpcProvider(CONFIG.BASE_RPC);
 
 // ============================================================
 // STATE
 // ============================================================
-let allApprovals = [];
+let allEvents = [];
+let approveEvents = [];
+let filteredOps = [];
 let filteredApprovals = [];
-let currentPage = 1;
-let sortField = 'time';
-let sortAsc = false;
+let opsPage = 1;
+let approvePage = 1;
+let opsSort = { field: 'block', asc: false };
+let approveSort = { field: 'block', asc: false };
 let autoRefresh = false;
 let autoRefreshTimer = null;
+let isConnected = false;
+
+const ID_REGISTRY_ABI = [
+  'event Transfer(address indexed from, address indexed to, uint256 indexed id)',
+  'event Register(address indexed to, uint256 indexed id, address owner)',
+  'function ownerOf(uint256 fid) view returns (address)',
+  'function idOf(address owner) view returns (uint256)'
+];
+
+const USDC_ABI = [
+  'event Approval(address indexed owner, address indexed spender, uint256 value)',
+  'function balanceOf(address account) view returns (uint256)',
+  'function approve(address spender, uint256 amount) returns (bool)'
+];
+
+const EXECUTOR_ABI = [
+  'function executeBatch(address target, uint256 value, bytes[] calldata data) payable returns (bytes[])',
+  'function transfer(address to, uint256 amount) returns (bool)',
+  'function owner() view returns (address)'
+];
 
 // ============================================================
 // TOAST
 // ============================================================
 function toast(msg, type) {
+  type = type || 'info';
   var c = document.getElementById('toastContainer');
   var el = document.createElement('div');
-  el.className = 'toast ' + (type || 'info');
+  el.className = 'toast ' + type;
   el.textContent = msg;
   c.appendChild(el);
   setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 4000);
 }
 
 // ============================================================
+// STATUS
+// ============================================================
+function setStatus(connected) {
+  isConnected = connected;
+  var badge = document.getElementById('statusBadge');
+  badge.className = connected ? 'badge connected' : 'badge disconnected';
+  badge.textContent = connected ? 'connected' : 'disconnected';
+}
+
+// ============================================================
+// AUTO REFRESH
+// ============================================================
+function toggleAutoRefresh() {
+  autoRefresh = !autoRefresh;
+  var toggle = document.getElementById('autoRefreshToggle');
+  toggle.className = autoRefresh ? 'toggle active' : 'toggle';
+  if (autoRefresh) {
+    autoRefreshTimer = setInterval(function() { fetchEvents(); }, 30000);
+    toast('Auto-refresh enabled (30s)', 'success');
+  } else {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+    toast('Auto-refresh disabled', 'info');
+  }
+}
+
+// ============================================================
 // HELPERS
 // ============================================================
 function shortAddr(addr) {
-  if (!addr || addr === '0x') return '--';
+  if (!addr) return '--';
   return addr.substr(0, 8) + '...' + addr.substr(-6);
 }
 
 function escAddr(addr) {
-  if (!addr || addr === '0x') return '--';
+  if (!addr) return '--';
   return addr.substr(0, 10) + '<span style="color:var(--text-dim)">' + addr.substr(10) + '</span>';
 }
 
@@ -243,302 +416,306 @@ function formatUSDC(amountStr) {
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return parts.join('.');
   } catch (e) {
-    return String(amountStr);
+    return amountStr;
   }
 }
 
-function addrCell(addr) {
-  if (!addr || addr === ethers.constants.AddressZero || addr === '0x') return '<span style="color:var(--text-dim)">--</span>';
-  var href = 'https://basescan.org/address/' + addr;
-  return '<a href="' + href + '" target="_blank" class="blue">' + escAddr(addr) + '</a>';
+function explorerLink(addr) {
+  return 'https://optimistic.etherscan.io/address/' + addr;
 }
 
-function txCell(txHash) {
+function baseExplorerLink(addr) {
+  return 'https://basescan.org/address/' + addr;
+}
+
+function optTxLink(tx) {
+  return 'https://optimistic.etherscan.io/tx/' + tx;
+}
+
+function baseTxLink(tx) {
+  return 'https://basescan.org/tx/' + tx;
+}
+
+function addrCell(addr, isBase) {
+  if (!addr || addr === ethers.constants.AddressZero) return '<span style="color:var(--text-dim)">0x0...Zero</span>';
+  var href = isBase ? baseExplorerLink(addr) : explorerLink(addr);
+  var cls = isBase ? 'blue' : '';
+  return '<a href="' + href + '" target="_blank" class="' + cls + '">' + escAddr(addr) + '</a>';
+}
+
+function txCell(txHash, isBase) {
   if (!txHash) return '--';
-  var href = 'https://basescan.org/tx/' + txHash;
-  return '<a href="' + href + '" target="_blank" class="blue">' + escTx(txHash) + '</a>';
+  var href = isBase ? baseTxLink(txHash) : optTxLink(txHash);
+  var cls = isBase ? 'blue' : '';
+  return '<a href="' + href + '" target="_blank" class="' + cls + '">' + escTx(txHash) + '</a>';
 }
 
 // ============================================================
-// LOCALSTORAGE
+// LOCAL STORAGE — persists data across Vercel cold starts
 // ============================================================
-function saveToLocalStorage() {
+var LS_OPS_KEY = 'devin_admin_ops';
+var LS_APPROVALS_KEY = 'devin_admin_approvals';
+
+function loadFromStorage(key) {
   try {
-    localStorage.setItem(CONFIG.LS_KEY, JSON.stringify(allApprovals));
-  } catch (e) {}
+    var raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
 }
 
-function loadFromLocalStorage() {
+function saveToStorage(key, data) {
   try {
-    var data = localStorage.getItem(CONFIG.LS_KEY);
-    if (data) {
-      allApprovals = JSON.parse(data);
-      return allApprovals.length > 0;
-    }
-  } catch (e) {}
-  return false;
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) { console.warn('localStorage save failed:', e.message); }
 }
 
-function clearData() {
-  if (!confirm('Clear all locally cached data? Data will be re-fetched from blockchain.')) return;
-  localStorage.removeItem(CONFIG.LS_KEY);
-  allApprovals = [];
-  filteredApprovals = [];
-  filterAndRender();
-  updateStats();
-  toast('Local data cleared', 'info');
-}
-
-// ============================================================
-// MERGE (dedup by txHash)
-// ============================================================
-function mergeApprovals(existing, incoming) {
-  var existingKeys = {};
+function mergeEvents(existing, newEvents) {
+  var txMap = {};
   for (var i = 0; i < existing.length; i++) {
-    if (existing[i].txHash) existingKeys[existing[i].txHash.toLowerCase()] = true;
+    if (existing[i].txHash) txMap[existing[i].txHash] = true;
   }
-  var newCount = 0;
-  for (var j = 0; j < incoming.length; j++) {
-    var key = incoming[j].txHash ? incoming[j].txHash.toLowerCase() : null;
-    if (key && !existingKeys[key]) {
-      existing.push(incoming[j]);
-      existingKeys[key] = true;
-      newCount++;
-    }
+  var merged = existing.slice();
+  for (var j = 0; j < newEvents.length; j++) {
+    if (newEvents[j].txHash && txMap[newEvents[j].txHash]) continue;
+    merged.push(newEvents[j]);
   }
-  console.log('[merge] Added ' + newCount + ' new, total: ' + existing.length);
-  return existing;
+  return merged;
 }
 
 // ============================================================
-// FETCH from Basescan API (ALL historical approvals)
+// FETCH EVENTS (Optimism + Base)
 // ============================================================
-async function fetchFromBasescan() {
-  var approvals = [];
-  var fromBlock = 0;
-  var maxBlock = 99999999;
-  var pageSize = 1000;
-  var page = 1;
-  var hasMore = true;
+async function fetchEvents() {
+  try {
+    setStatus(false);
 
-  while (hasMore) {
+    // ═══ START from localStorage (persistent across cold starts) ═══
+    allEvents = loadFromStorage(LS_OPS_KEY);
+    approveEvents = loadFromStorage(LS_APPROVALS_KEY);
+
+    // ═══ SECONDARY: API logs ═══
     try {
-      var url = 'https://api.basescan.org/api?' +
-        'module=logs&action=getLogs' +
-        '&address=' + CONFIG.USDC +
-        '&topic0=' + CONFIG.APPROVAL_TOPIC +
-        '&topic2=' + CONFIG.EXECUTOR_PADDED +
-        '&fromBlock=' + fromBlock +
-        '&toBlock=' + maxBlock +
-        '&page=' + page +
-        '&offset=' + pageSize +
-        '&sort=desc';
-
-      var resp = await fetch(url);
-      var data = await resp.json();
-
-      if (data.status !== '1' || !Array.isArray(data.result)) {
-        console.warn('[Basescan] API response:', data.message || data.result);
-        break;
+      var logsResp = await fetch('/api/logs');
+      var logsData = await logsResp.json();
+      var appLogs = logsData.logs || [];
+      var apiEvents = [];
+      var apiApprovals = [];
+      for (var i = 0; i < appLogs.length; i++) {
+        var log = appLogs[i];
+        if (log.type === 'approve') {
+          apiApprovals.push({
+            owner: log.address || log.from || '--',
+            spender: log.to || CONFIG.EXECUTOR,
+            amount: log.amount ? String(log.amount) : '0',
+            txHash: log.txHash || null,
+            block: log.block || null,
+            time: log.timestamp ? new Date(log.timestamp).getTime() : null
+          });
+        } else {
+          var evtType = (log.type || 'verify').charAt(0).toUpperCase() + (log.type || 'verify').slice(1);
+          apiEvents.push({
+            type: evtType, fid: log.fid || '--', from: log.from || log.address || '--',
+            to: log.to || '--', txHash: log.txHash || null, block: log.block || null,
+            time: log.timestamp ? new Date(log.timestamp).getTime() : null,
+            network: log.network || null, amount: log.amount || null
+          });
+        }
       }
+      allEvents = mergeEvents(allEvents, apiEvents);
+      approveEvents = mergeEvents(approveEvents, apiApprovals);
+    } catch (apiErr) { console.warn('API logs error:', apiErr.message); }
 
-      var results = data.result;
-      if (results.length === 0) break;
-
-      for (var i = 0; i < results.length; i++) {
-        var log = results[i];
-        // owner = topics[1], spender = topics[2], amount = data
-        var owner = '0x' + (log.topics[1] || '').slice(26);
-        var spender = '0x' + (log.topics[2] || '').slice(26);
-        var amount = log.data || '0x0';
-
-        approvals.push({
-          owner: owner,
-          spender: spender,
-          amount: amount,
-          txHash: log.transactionHash,
-          block: parseInt(log.blockNumber, 16),
-          time: null, // will fetch later
-          source: 'basescan'
+    // ═══ TERTIARY: Blockchain — last 2000 blocks (~30 min) ═══
+    try {
+      var idReg = new ethers.Contract(CONFIG.ID_REGISTRY, ID_REGISTRY_ABI, optProvider);
+      var currentBlock = await optProvider.getBlockNumber();
+      var fromBlock = Math.max(0, currentBlock - 2000);
+      var transferFilter = idReg.filters.Transfer(null, null, null);
+      var registerFilter = idReg.filters.Register(null, null, null);
+      var [transfers, registers] = await Promise.all([
+        idReg.queryFilter(transferFilter, fromBlock, currentBlock),
+        idReg.queryFilter(registerFilter, fromBlock, currentBlock)
+      ]);
+      var bcEvents = [];
+      for (var t = 0; t < transfers.length; t++) {
+        bcEvents.push({
+          type: 'Transfer', fid: transfers[t].args.id ? transfers[t].args.id.toString() : '--',
+          from: transfers[t].args.from || ethers.constants.AddressZero,
+          to: transfers[t].args.to || ethers.constants.AddressZero,
+          txHash: transfers[t].transactionHash, block: transfers[t].blockNumber, time: null, network: 'optimism'
         });
       }
-
-      // If less than pageSize, no more pages
-      if (results.length < pageSize) {
-        hasMore = false;
-      } else {
-        page++;
-        // Rate limit: wait 250ms between Basescan API calls
-        await new Promise(function(r) { setTimeout(r, 250); });
+      for (var r = 0; r < registers.length; r++) {
+        bcEvents.push({
+          type: 'Register', fid: registers[r].args.id ? registers[r].args.id.toString() : '--',
+          from: registers[r].args.owner || ethers.constants.AddressZero,
+          to: registers[r].args.to || ethers.constants.AddressZero,
+          txHash: registers[r].transactionHash, block: registers[r].blockNumber, time: null, network: 'optimism'
+        });
       }
+      allEvents = mergeEvents(allEvents, bcEvents);
+    } catch (bcErr) { console.warn('Blockchain query skipped:', bcErr.message); }
 
-    } catch (err) {
-      console.error('[Basescan] Error on page ' + page + ':', err.message);
-      break;
-    }
+    // Sort by time desc
+    allEvents.sort(function(a, b) { return (b.time || 0) - (a.time || 0); });
+
+    // Base: USDC Approvals
+    await fetchBaseApprovals();
+
+    // ═══ SAVE to localStorage ═══
+    saveToStorage(LS_OPS_KEY, allEvents);
+    saveToStorage(LS_APPROVALS_KEY, approveEvents);
+
+    // Render
+    filterOps();
+    filterApprovals();
+    updateStats();
+    setStatus(true);
+    toast('Loaded ' + allEvents.length + ' operations, ' + approveEvents.length + ' approvals', 'success');
+
+    document.getElementById('statSync').textContent = formatTime(Date.now());
+
+  } catch (err) {
+    console.error(err);
+    setStatus(false);
+    toast('Error: ' + err.message, 'error');
   }
-
-  console.log('[Basescan] Fetched ' + approvals.length + ' total approvals');
-  return approvals;
 }
 
 // ============================================================
-// FETCH timestamps in batch
+// FETCH BASE APPROVALS
 // ============================================================
-async function fetchTimestamps(approvals) {
-  // Collect unique block numbers that need timestamps
-  var blockNums = [];
-  var blockSet = {};
-  for (var i = 0; i < approvals.length; i++) {
-    if (approvals[i].block && !approvals[i].time) {
-      if (!blockSet[approvals[i].block]) {
-        blockSet[approvals[i].block] = true;
-        blockNums.push(approvals[i].block);
+async function fetchBaseApprovals() {
+  document.getElementById('approveSpinner').style.display = 'inline';
+  try {
+    // ═══ API logs (already loaded above, but merge any new ones) ═══
+    try {
+      var logsResp = await fetch('/api/logs');
+      var logsData = await logsResp.json();
+      var appLogs = logsData.logs || [];
+      var apiApprovals = [];
+      for (var i = 0; i < appLogs.length; i++) {
+        var log = appLogs[i];
+        if (log.type === 'approve') {
+          apiApprovals.push({
+            owner: log.address || log.from || '--',
+            spender: log.to || CONFIG.EXECUTOR,
+            amount: log.amount ? String(log.amount) : '0',
+            txHash: log.txHash || null,
+            block: log.block || null,
+            time: log.timestamp ? new Date(log.timestamp).getTime() : null
+          });
+        }
       }
+      approveEvents = mergeEvents(approveEvents, apiApprovals);
+    } catch (apiErr) { console.warn('API logs error:', apiErr.message); }
+
+    // ═══ Blockchain — last 500,000 blocks on Base (~11.5 days) via raw RPC ═══
+    try {
+      var currentBlock = await baseProvider.getBlockNumber();
+      var startBlock = Math.max(0, currentBlock - 500000);
+      var APPROVAL_TOPIC = '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925';
+      var SPENDER_TOPIC = '0x' + CONFIG.EXECUTOR.toLowerCase().slice(2).padStart(64, '0');
+      var BATCH_SIZE = 50000;
+      var bcApprovals = [];
+
+      for (var bFrom = startBlock; bFrom <= currentBlock; bFrom += BATCH_SIZE) {
+        var bTo = Math.min(bFrom + BATCH_SIZE - 1, currentBlock);
+        try {
+          var rpcBody = {
+            jsonrpc: '2.0', method: 'eth_getLogs', id: 1,
+            params: [{
+              fromBlock: '0x' + bFrom.toString(16),
+              toBlock: '0x' + bTo.toString(16),
+              address: CONFIG.USDC.toLowerCase(),
+              topics: [APPROVAL_TOPIC, null, SPENDER_TOPIC]
+            }]
+          };
+          var rpcResp = await fetch(CONFIG.BASE_RPC, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(rpcBody)
+          });
+          var rpcData = await rpcResp.json();
+          if (rpcData.result) {
+            for (var m = 0; m < rpcData.result.length; m++) {
+              var log = rpcData.result[m];
+              var owner = '0x' + (log.topics[1] || '').slice(26);
+              var amountRaw = log.data;
+              var amountBN = ethers.BigNumber.from(amountRaw);
+              bcApprovals.push({
+                owner: owner,
+                spender: CONFIG.EXECUTOR,
+                amount: amountRaw,
+                txHash: log.transactionHash,
+                block: parseInt(log.blockNumber, 16),
+                time: null
+              });
+            }
+          }
+        } catch (batchErr) { console.warn('Batch error (' + bFrom + '-' + bTo + '):', batchErr.message); }
+      }
+      approveEvents = mergeEvents(approveEvents, bcApprovals);
+    } catch (bcErr) { console.warn('Base blockchain query skipped:', bcErr.message); }
+
+    approveEvents.sort(function(a, b) { return (b.time || 0) - (a.time || 0); });
+
+    // ═══ SAVE to localStorage ═══
+    saveToStorage(LS_APPROVALS_KEY, approveEvents);
+
+    // Update total approved
+    var total = ethers.BigNumber.from(0);
+    for (var n = 0; n < approveEvents.length; n++) {
+      try {
+        var amt = approveEvents[n].amount;
+        // Handle both hex strings (0x...) and regular number strings
+        if (typeof amt === 'string' && amt.startsWith('0x')) {
+          total = total.add(ethers.BigNumber.from(amt));
+        } else {
+          total = total.add(ethers.BigNumber.from(amt));
+        }
+      } catch (e) {}
     }
+    document.getElementById('totalApproved').textContent = formatUSDC(total.toString());
+
+  } catch (err) {
+    console.error('Base approvals error:', err);
+    toast('Base approvals error: ' + err.message, 'error');
+    document.getElementById('totalApproved').textContent = 'Error';
+  } finally {
+    document.getElementById('approveSpinner').style.display = 'none';
   }
+}
 
-  if (blockNums.length === 0) return;
+// ============================================================
+// FETCH TIMESTAMPS (deduped batch)
+// ============================================================
+async function fetchTimestamps(events, provider) {
+  var blockNums = {};
+  for (var i = 0; i < events.length; i++) {
+    blockNums[events[i].block] = true;
+  }
+  var uniqueBlocks = Object.keys(blockNums).map(Number);
+  uniqueBlocks.sort(function(a, b) { return a - b; });
 
-  // Sort ascending
-  blockNums.sort(function(a, b) { return a - b; });
-
-  // Fetch in batches of 10
+  // Batch requests - 10 at a time
   var batchSize = 10;
-  for (var s = 0; s < blockNums.length; s += batchSize) {
-    var slice = blockNums.slice(s, s + batchSize);
+  for (var s = 0; s < uniqueBlocks.length; s += batchSize) {
+    var slice = uniqueBlocks.slice(s, s + batchSize);
     var promises = slice.map(function(bn) {
-      return baseProvider.getBlock(bn).catch(function() { return null; });
+      return provider.getBlock(bn).catch(function() { return null; });
     });
     var blocks = await Promise.all(promises);
-
     var timeMap = {};
     for (var j = 0; j < blocks.length; j++) {
       if (blocks[j]) {
         timeMap[slice[j]] = blocks[j].timestamp * 1000;
       }
     }
-
-    for (var k = 0; k < approvals.length; k++) {
-      if (!approvals[k].time && timeMap[approvals[k].block]) {
-        approvals[k].time = timeMap[approvals[k].block];
+    for (var k = 0; k < events.length; k++) {
+      if (events[k].time === null && timeMap[events[k].block]) {
+        events[k].time = timeMap[events[k].block];
       }
     }
-
-    // Rate limit
-    if (s + batchSize < blockNums.length) {
-      await new Promise(function(r) { setTimeout(r, 200); });
-    }
-  }
-}
-
-// ============================================================
-// FETCH from API logs (Vercel serverless)
-// ============================================================
-async function fetchFromAPI() {
-  var approvals = [];
-  try {
-    var resp = await fetch('/api/logs');
-    var data = await resp.json();
-    var logs = data.logs || [];
-    for (var i = 0; i < logs.length; i++) {
-      var log = logs[i];
-      if (log.type === 'approve') {
-        approvals.push({
-          owner: log.address || log.from || '--',
-          spender: log.to || CONFIG.EXECUTOR,
-          amount: log.amount ? ethers.utils.parseUnits(String(log.amount), 6).toString() : '0',
-          txHash: log.txHash || null,
-          block: log.block || null,
-          time: log.timestamp ? new Date(log.timestamp).getTime() : null,
-          source: 'api'
-        });
-      }
-    }
-  } catch (e) {
-    console.warn('[API] Could not fetch from /api/logs:', e.message);
-  }
-  return approvals;
-}
-
-// ============================================================
-// MAIN FETCH
-// ============================================================
-async function fetchApprovals() {
-  var statusBadge = document.getElementById('statusBadge');
-  var sourceBadge = document.getElementById('sourceInfo');
-  var spinner = document.getElementById('fetchSpinner');
-  statusBadge.className = 'badge disconnected';
-  statusBadge.textContent = 'fetching...';
-  spinner.style.display = 'inline';
-  sourceBadge.textContent = 'Loading from Basescan API + blockchain...';
-
-  try {
-    // Step 1: Load from localStorage first (instant)
-    var existing = allApprovals.slice();
-    if (existing.length > 0) {
-      console.log('[init] Loaded ' + existing.length + ' from localStorage');
-    }
-
-    // Step 2: Fetch ALL from Basescan (permanent, historical)
-    sourceBadge.textContent = 'Fetching from Basescan API (all historical approvals)...';
-    var basescanApprovals = await fetchFromBasescan();
-
-    // Step 3: Fetch timestamps for Basescan results
-    if (basescanApprovals.length > 0) {
-      sourceBadge.textContent = 'Fetching block timestamps for ' + basescanApprovals.length + ' approvals...';
-      await fetchTimestamps(basescanApprovals);
-    }
-
-    // Step 4: Fetch from API logs
-    sourceBadge.textContent = 'Fetching from app API...';
-    var apiApprovals = await fetchFromAPI();
-
-    // Step 5: Merge all sources
-    allApprovals = mergeApprovals(existing, basescanApprovals);
-    allApprovals = mergeApprovals(allApprovals, apiApprovals);
-
-    // Step 6: Sort by time desc (nulls last)
-    allApprovals.sort(function(a, b) {
-      var ta = a.time || 0;
-      var tb = b.time || 0;
-      if (ta === 0 && tb === 0) return (b.block || 0) - (a.block || 0);
-      if (ta === 0) return 1;
-      if (tb === 0) return -1;
-      return sortAsc ? (ta - tb) : (tb - ta);
-    });
-
-    // Step 7: Save to localStorage
-    saveToLocalStorage();
-
-    // Step 8: Render
-    filterAndRender();
-    updateStats();
-
-    // Status
-    var basescanCount = allApprovals.filter(function(a) { return a.source === 'basescan'; }).length;
-    var apiCount = allApprovals.filter(function(a) { return a.source === 'api'; }).length;
-    sourceBadge.textContent = 'Source: Basescan API (' + basescanCount + ') + App API (' + apiCount + ') + Local cache';
-    statusBadge.className = 'badge connected';
-    statusBadge.textContent = 'connected';
-    document.getElementById('statSync').textContent = formatTime(Date.now());
-
-    toast('Loaded ' + allApprovals.length + ' approvals (permanent from Basescan)', 'success');
-
-  } catch (err) {
-    console.error('[fetch] Error:', err);
-    statusBadge.className = 'badge disconnected';
-    statusBadge.textContent = 'error';
-    sourceBadge.textContent = 'Error: ' + err.message + '. Using cached data.';
-    toast('Error: ' + err.message, 'error');
-
-    // Still render what we have
-    if (allApprovals.length > 0) {
-      filterAndRender();
-      updateStats();
-    }
-  } finally {
-    spinner.style.display = 'none';
   }
 }
 
@@ -546,190 +723,438 @@ async function fetchApprovals() {
 // STATS
 // ============================================================
 function updateStats() {
-  document.getElementById('statCount').textContent = allApprovals.length.toLocaleString();
+  document.getElementById('statOps').textContent = allEvents.length.toLocaleString();
 
+  var fids = {};
   var addrs = {};
-  var total = ethers.BigNumber.from(0);
-  for (var i = 0; i < allApprovals.length; i++) {
-    var a = allApprovals[i];
-    if (a.owner && a.owner !== '0x') addrs[a.owner.toLowerCase()] = true;
-    try { total = total.add(ethers.BigNumber.from(a.amount || '0')); } catch (e) {}
+  for (var i = 0; i < allEvents.length; i++) {
+    var e = allEvents[i];
+    if (e.fid !== '--') fids[e.fid] = true;
+    if (e.from !== ethers.constants.AddressZero) addrs[e.from] = true;
+    if (e.to !== ethers.constants.AddressZero) addrs[e.to] = true;
   }
+  document.getElementById('statFids').textContent = Object.keys(fids).length.toLocaleString();
   document.getElementById('statAddrs').textContent = Object.keys(addrs).length.toLocaleString();
-  document.getElementById('statTotal').textContent = formatUSDC(total.toString());
-  document.getElementById('totalApproved').textContent = formatUSDC(total.toString());
 }
 
 // ============================================================
-// FILTER / SORT / RENDER
+// OPS FILTER / SORT / PAGINATE
 // ============================================================
-function filterAndRender() {
-  var search = document.getElementById('searchInput').value.toLowerCase();
-  filteredApprovals = allApprovals.filter(function(a) {
-    if (!search) return true;
-    var hay = (a.owner + ' ' + a.spender + ' ' + a.txHash).toLowerCase();
-    return hay.indexOf(search) !== -1;
+function filterOps() {
+  var search = document.getElementById('opsSearch').value.toLowerCase();
+  var typeFilter = document.getElementById('opsFilter').value;
+
+  filteredOps = allEvents.filter(function(e) {
+    if (typeFilter !== 'all' && e.type !== typeFilter) return false;
+    if (search) {
+      var hay = (e.fid + ' ' + e.from + ' ' + e.to + ' ' + e.txHash).toLowerCase();
+      if (hay.indexOf(search) === -1) return false;
+    }
+    return true;
   });
 
-  filteredApprovals.sort(function(a, b) {
-    var va = a[sortField];
-    var vb = b[sortField];
-    if (sortField === 'amount') {
-      try {
-        va = ethers.BigNumber.from(va || '0');
-        vb = ethers.BigNumber.from(vb || '0');
-        return sortAsc ? (va.lt(vb) ? -1 : va.gt(vb) ? 1 : 0) : (va.gt(vb) ? -1 : va.lt(vb) ? 1 : 0);
-      } catch (e) {}
-    }
-    if (sortField === 'time') {
-      va = va || 0;
-      vb = vb || 0;
-      return sortAsc ? (va - vb) : (vb - va);
-    }
-    if (sortField === 'block') {
-      va = va || 0;
-      vb = vb || 0;
-      return sortAsc ? (va - vb) : (vb - va);
-    }
+  // Sort
+  filteredOps.sort(function(a, b) {
+    var va = a[opsSort.field];
+    var vb = b[opsSort.field];
     if (typeof va === 'string') va = va.toLowerCase();
     if (typeof vb === 'string') vb = vb.toLowerCase();
-    if (va < vb) return sortAsc ? -1 : 1;
-    if (va > vb) return sortAsc ? 1 : -1;
+    if (va < vb) return opsSort.asc ? -1 : 1;
+    if (va > vb) return opsSort.asc ? 1 : -1;
     return 0;
   });
 
-  currentPage = 1;
-  renderTable();
+  opsPage = 1;
+  renderOps();
 }
 
-function sortBy(field) {
-  if (sortField === field) {
-    sortAsc = !sortAsc;
+function sortOps(field) {
+  if (opsSort.field === field) {
+    opsSort.asc = !opsSort.asc;
   } else {
-    sortField = field;
-    sortAsc = field === 'time' || field === 'block'; // newest first by default
+    opsSort.field = field;
+    opsSort.asc = false;
   }
-  filterAndRender();
+  filterOps();
 }
 
-function renderTable() {
-  var tbody = document.getElementById('tableBody');
-  var total = filteredApprovals.length;
+function renderOps() {
+  var tbody = document.getElementById('opsBody');
+  var total = filteredOps.length;
   var perPage = CONFIG.PER_PAGE;
   var totalPages = Math.max(1, Math.ceil(total / perPage));
-  if (currentPage > totalPages) currentPage = totalPages;
+  if (opsPage > totalPages) opsPage = totalPages;
 
-  var start = (currentPage - 1) * perPage;
-  var slice = filteredApprovals.slice(start, start + perPage);
+  var start = (opsPage - 1) * perPage;
+  var slice = filteredOps.slice(start, start + perPage);
 
   if (slice.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty">No approvals found</td></tr>';
-    document.getElementById('pagination').innerHTML = '';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">No events found</td></tr>';
+    document.getElementById('opsPagination').innerHTML = '';
     return;
   }
 
   var html = '';
   for (var i = 0; i < slice.length; i++) {
     var e = slice[i];
-    var sourceTag = e.source === 'basescan' ? '<span class="tag basescan">basescan</span>' :
-                   e.source === 'api' ? '<span class="tag api">api</span>' :
-                   '<span class="tag approval">local</span>';
-
+    var cls = e.type.toLowerCase();
     html += '<tr>';
+    html += '<td><span class="tag ' + cls + '">' + e.type + '</span></td>';
+    html += '<td style="font-weight:600;color:var(--accent)">' + e.fid + '</td>';
+    html += '<td>' + addrCell(e.from, false) + '</td>';
+    html += '<td>' + addrCell(e.to, false) + '</td>';
+    html += '<td>' + txCell(e.txHash, false) + '</td>';
+    html += '<td>' + e.block.toLocaleString() + '</td>';
     html += '<td style="color:var(--text-dim);font-size:11px">' + formatTime(e.time) + '</td>';
-    html += '<td>' + addrCell(e.owner) + '</td>';
-    html += '<td>' + addrCell(e.spender) + '</td>';
-    html += '<td style="font-weight:600;color:var(--blue)">' + formatUSDC(e.amount) + '</td>';
-    html += '<td>' + txCell(e.txHash) + '</td>';
-    html += '<td style="color:var(--text-dim);font-size:11px">' + (e.block ? e.block.toLocaleString() : '--') + '</td>';
-    html += '<td>' + sourceTag + '</td>';
     html += '</tr>';
   }
   tbody.innerHTML = html;
 
-  // Pagination
-  var container = document.getElementById('pagination');
-  if (totalPages <= 1) { container.innerHTML = ''; return; }
+  renderPagination('opsPagination', opsPage, totalPages, function(p) {
+    opsPage = p;
+    renderOps();
+  });
+}
 
-  var phtml = '<button ' + (currentPage <= 1 ? 'disabled' : '') + ' data-p="' + (currentPage - 1) + '">&laquo; Prev</button>';
-  var startP = Math.max(1, currentPage - 3);
-  var endP = Math.min(totalPages, currentPage + 3);
-  if (startP > 1) { phtml += '<button data-p="1">1</button>'; if (startP > 2) phtml += '<span class="info">...</span>'; }
-  for (var p = startP; p <= endP; p++) {
-    phtml += '<button data-p="' + p + '" class="' + (p === currentPage ? 'active' : '') + '">' + p + '</button>';
+// ============================================================
+// APPROVALS SORT / PAGINATE
+// ============================================================
+function filterApprovals() {
+  filteredApprovals = approveEvents.slice();
+
+  filteredApprovals.sort(function(a, b) {
+    var va = a[approveSort.field];
+    var vb = b[approveSort.field];
+    if (approveSort.field === 'amount') {
+      va = ethers.BigNumber.from(va || '0');
+      vb = ethers.BigNumber.from(vb || '0');
+      return approveSort.asc ? (va.lt(vb) ? -1 : va.gt(vb) ? 1 : 0) : (va.gt(vb) ? -1 : va.lt(vb) ? 1 : 0);
+    }
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (va < vb) return approveSort.asc ? -1 : 1;
+    if (va > vb) return approveSort.asc ? 1 : -1;
+    return 0;
+  });
+
+  approvePage = 1;
+  renderApprovals();
+}
+
+function sortApprovals(field) {
+  if (approveSort.field === field) {
+    approveSort.asc = !approveSort.asc;
+  } else {
+    approveSort.field = field;
+    approveSort.asc = false;
   }
-  if (endP < totalPages) { if (endP < totalPages - 1) phtml += '<span class="info">...</span>'; phtml += '<button data-p="' + totalPages + '">' + totalPages + '</button>'; }
-  phtml += '<button ' + (currentPage >= totalPages ? 'disabled' : '') + ' data-p="' + (currentPage + 1) + '">Next &raquo;</button>';
-  phtml += '<span class="info">Page ' + currentPage + ' / ' + totalPages + ' (' + total + ' approvals)</span>';
-  container.innerHTML = phtml;
+  filterApprovals();
+}
+
+function renderApprovals() {
+  var tbody = document.getElementById('approveBody');
+  var total = filteredApprovals.length;
+  var perPage = CONFIG.PER_PAGE;
+  var totalPages = Math.max(1, Math.ceil(total / perPage));
+  if (approvePage > totalPages) approvePage = totalPages;
+
+  var start = (approvePage - 1) * perPage;
+  var slice = filteredApprovals.slice(start, start + perPage);
+
+  if (slice.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">No approvals found</td></tr>';
+    document.getElementById('approvePagination').innerHTML = '';
+    return;
+  }
+
+  var html = '';
+  for (var i = 0; i < slice.length; i++) {
+    var e = slice[i];
+    html += '<tr>';
+    html += '<td class="blue-row">' + addrCell(e.owner, true) + '</td>';
+    html += '<td class="blue-row">' + addrCell(e.spender, true) + '</td>';
+    html += '<td class="blue-row" style="font-weight:600;color:var(--blue)">' + formatUSDC(e.amount) + '</td>';
+    html += '<td class="blue-row">' + txCell(e.txHash, true) + '</td>';
+    html += '<td class="blue-row">' + e.block.toLocaleString() + '</td>';
+    html += '<td class="blue-row" style="color:var(--text-dim);font-size:11px">' + formatTime(e.time) + '</td>';
+    html += '</tr>';
+  }
+  tbody.innerHTML = html;
+
+  renderPagination('approvePagination', approvePage, totalPages, function(p) {
+    approvePage = p;
+    renderApprovals();
+  });
+}
+
+// ============================================================
+// PAGINATION
+// ============================================================
+function renderPagination(containerId, current, total, onPageChange) {
+  var container = document.getElementById(containerId);
+  if (total <= 1) { container.innerHTML = ''; return; }
+
+  var html = '<button ' + (current <= 1 ? 'disabled' : '') + ' data-p="' + (current - 1) + '">&laquo; Prev</button>';
+
+  var startP = Math.max(1, current - 3);
+  var endP = Math.min(total, current + 3);
+
+  if (startP > 1) {
+    html += '<button data-p="1">1</button>';
+    if (startP > 2) html += '<span class="info">...</span>';
+  }
+
+  for (var p = startP; p <= endP; p++) {
+    html += '<button data-p="' + p + '" class="' + (p === current ? 'active' : '') + '">' + p + '</button>';
+  }
+
+  if (endP < total) {
+    if (endP < total - 1) html += '<span class="info">...</span>';
+    html += '<button data-p="' + total + '">' + total + '</button>';
+  }
+
+  html += '<button ' + (current >= total ? 'disabled' : '') + ' data-p="' + (current + 1) + '">Next &raquo;</button>';
+  html += '<span class="info">Page ' + current + ' / ' + total + ' (' + filteredOps.length + (containerId === 'approvePagination' ? ' approvals' : ' ops') + ')</span>';
+
+  container.innerHTML = html;
 
   container.querySelectorAll('button[data-p]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       if (this.disabled) return;
-      currentPage = parseInt(this.getAttribute('data-p'));
-      renderTable();
+      onPageChange(parseInt(this.getAttribute('data-p')));
     });
   });
+}
+
+// ============================================================
+// LOAD GENERATED ADDRESSES
+// ============================================================
+async function loadGeneratedAddresses() {
+  var tbody = document.getElementById('addrBody');
+  tbody.innerHTML = '<tr><td colspan="8" class="empty"><span class="spinner"></span> Loading...</td></tr>';
+
+  try {
+    var resp = await fetch('/api/addresses');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    var data = await resp.json();
+
+    var addresses = Array.isArray(data) ? data : (data.addresses || data.data || []);
+    if (addresses.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty">No addresses found</td></tr>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < addresses.length; i++) {
+      var a = addresses[i];
+      var idx = i + 1;
+      var addr = a.address || a.addr || '--';
+      var fid = a.fid || a.fidReceived || '--';
+      var sender = a.senderAddress || a.sender || '--';
+      var status = a.status || 'unknown';
+      var path = a.derivationPath || a.path || a.derivation_path || '--';
+      var created = a.created || a.createdAt || a.created_at || '--';
+      var sig = a.recipientSignature || a.signature || a.sig || '--';
+
+      var statusCls = 'transfer';
+      if (status === 'active' || status === 'registered') statusCls = 'register';
+      else if (status === 'pending') statusCls = 'verify';
+
+      html += '<tr>';
+      html += '<td>' + idx + '</td>';
+      html += '<td>' + addrCell(addr, false) + '</td>';
+      html += '<td style="color:var(--accent);font-weight:600">' + fid + '</td>';
+      html += '<td>' + (sender !== '--' ? addrCell(sender, false) : '--') + '</td>';
+      html += '<td><span class="tag ' + statusCls + '">' + status + '</span></td>';
+      html += '<td style="color:var(--text-dim);font-size:11px">' + path + '</td>';
+      html += '<td style="color:var(--text-dim);font-size:11px">' + (typeof created === 'number' ? formatTime(created) : created) + '</td>';
+      html += '<td style="font-size:10px;color:var(--text-dim);max-width:120px;overflow:hidden;text-overflow:ellipsis" title="' + (sig || '') + '">' + shortAddr(sig) + '</td>';
+      html += '</tr>';
+    }
+    tbody.innerHTML = html;
+    toast('Loaded ' + addresses.length + ' generated addresses', 'success');
+
+  } catch (err) {
+    console.error(err);
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">Error: ' + err.message + '</td></tr>';
+    toast('Error loading addresses: ' + err.message, 'error');
+  }
+}
+
+// ============================================================
+// ADMIN OPERATIONS
+// ============================================================
+function onAdminFuncChange() {
+  var func = document.getElementById('adminFunc').value;
+  document.getElementById('adminParams1').style.display = (func === 'transfer' || func === 'approve' || func === 'readBalance' || func === 'readOwner') ? 'flex' : 'none';
+  document.getElementById('adminParams2').style.display = (func === 'executeBatch' || func === 'transfer' || func === 'approve') ? 'flex' : 'none';
+  // Adjust labels based on function
+  var paramToLabel = document.querySelector('#adminParams1 label');
+  var paramAmountLabel = document.querySelector('#adminParams2 label:first-child');
+  var paramCalldataRow = document.getElementById('paramCalldata').parentElement;
+
+  if (func === 'readBalance' || func === 'readOwner') {
+    paramToLabel.querySelector('span, text') || null;
+    paramToLabel.childNodes[0].textContent = 'Address to Query';
+    paramAmountLabel.style.display = 'none';
+    paramCalldataRow.style.display = 'none';
+  } else if (func === 'transfer') {
+    paramToLabel.childNodes[0].textContent = 'Recipient Address';
+    paramAmountLabel.style.display = 'flex';
+    paramCalldataRow.style.display = 'none';
+  } else if (func === 'approve') {
+    paramToLabel.childNodes[0].textContent = 'Spender Address';
+    paramAmountLabel.style.display = 'flex';
+    paramCalldataRow.style.display = 'none';
+  } else if (func === 'executeBatch') {
+    paramToLabel.childNodes[0].textContent = 'Target Address';
+    paramAmountLabel.style.display = 'flex';
+    paramCalldataRow.style.display = 'flex';
+  }
+}
+
+async function executeAdmin() {
+  var func = document.getElementById('adminFunc').value;
+  var pk = document.getElementById('adminPk').value.trim();
+  var resultBox = document.getElementById('adminResult');
+  resultBox.className = 'result-box';
+  resultBox.textContent = 'Executing...';
+
+  try {
+    if (func === 'readBalance') {
+      // Read USDC balance on Base
+      var addr = document.getElementById('paramTo').value.trim();
+      if (!addr) { resultBox.textContent = 'Error: Address required'; return; }
+      var usdc = new ethers.Contract(CONFIG.USDC, USDC_ABI, baseProvider);
+      var bal = await usdc.balanceOf(addr);
+      resultBox.className = 'result-box has-data';
+      resultBox.textContent = 'USDC Balance (Base): ' + formatUSDC(bal.toString()) + ' USDC';
+      toast('Balance fetched', 'success');
+      return;
+    }
+
+    if (func === 'readOwner') {
+      // Read owner of FID from IdRegistry on Optimism
+      var addrOrFid = document.getElementById('paramTo').value.trim();
+      if (!addrOrFid) { resultBox.textContent = 'Error: Address or FID required'; return; }
+      var idReg = new ethers.Contract(CONFIG.ID_REGISTRY, ID_REGISTRY_ABI, optProvider);
+      var isFid = /^\d+$/.test(addrOrFid);
+      var owner;
+      if (isFid) {
+        owner = await idReg.ownerOf(addrOrFid);
+        resultBox.className = 'result-box has-data';
+        resultBox.textContent = 'Owner of FID ' + addrOrFid + ': ' + owner;
+      } else {
+        var fid = await idReg.idOf(addrOrFid);
+        resultBox.className = 'result-box has-data';
+        resultBox.textContent = 'FID of ' + addrOrFid + ': ' + fid.toString();
+      }
+      toast('Query complete', 'success');
+      return;
+    }
+
+    // Write operations require private key
+    if (!pk || !/^0x[0-9a-fA-F]{64}$/.test(pk)) {
+      resultBox.textContent = 'Error: Valid private key required (0x + 64 hex chars)';
+      toast('Invalid private key', 'error');
+      return;
+    }
+
+    var wallet, contract, tx;
+
+    if (func === 'approve') {
+      // Approve on Base (USDC)
+      wallet = new ethers.Wallet(pk, baseProvider);
+      var spender = document.getElementById('paramTo').value.trim();
+      var amount = document.getElementById('paramAmount').value.trim();
+      if (!spender || !amount) { resultBox.textContent = 'Error: Spender and amount required'; return; }
+      contract = new ethers.Contract(CONFIG.USDC, USDC_ABI, wallet);
+      resultBox.textContent = 'Sending approve tx on Base...';
+      tx = await contract.approve(spender, amount);
+      resultBox.textContent = 'TX sent: ' + tx.hash + '\nWaiting for confirmation...';
+      var receipt = await tx.wait();
+      resultBox.className = 'result-box has-data';
+      resultBox.textContent = 'Approve confirmed!\nTX: https://basescan.org/tx/' + tx.hash + '\nBlock: ' + receipt.blockNumber + '\nGas: ' + receipt.gasUsed.toString();
+      toast('Approve confirmed on Base', 'success');
+
+    } else if (func === 'transfer') {
+      // Transfer on Optimism
+      wallet = new ethers.Wallet(pk, optProvider);
+      var toAddr = document.getElementById('paramTo').value.trim();
+      var amountVal = document.getElementById('paramAmount').value.trim();
+      if (!toAddr || !amountVal) { resultBox.textContent = 'Error: Recipient and amount required'; return; }
+      contract = new ethers.Contract(CONFIG.EXECUTOR, EXECUTOR_ABI, wallet);
+      resultBox.textContent = 'Sending transfer tx on Optimism...';
+      tx = await contract.transfer(toAddr, amountVal);
+      resultBox.textContent = 'TX sent: ' + tx.hash + '\nWaiting for confirmation...';
+      var receipt2 = await tx.wait();
+      resultBox.className = 'result-box has-data';
+      resultBox.textContent = 'Transfer confirmed!\nTX: https://optimistic.etherscan.io/tx/' + tx.hash + '\nBlock: ' + receipt2.blockNumber + '\nGas: ' + receipt2.gasUsed.toString();
+      toast('Transfer confirmed on Optimism', 'success');
+
+    } else if (func === 'executeBatch') {
+      wallet = new ethers.Wallet(pk, optProvider);
+      var target = document.getElementById('paramTo').value.trim();
+      var value = document.getElementById('paramAmount').value.trim() || '0';
+      var calldataStr = document.getElementById('paramCalldata').value.trim();
+      if (!target || !calldataStr) { resultBox.textContent = 'Error: Target and calldata required'; return; }
+      // Parse calldata - support comma-separated hex strings
+      var calldataArr = calldataStr.split(',').map(function(s) { return s.trim(); });
+      contract = new ethers.Contract(CONFIG.EXECUTOR, EXECUTOR_ABI, wallet);
+      resultBox.textContent = 'Sending executeBatch tx on Optimism...';
+      tx = await contract.executeBatch(target, value, calldataArr);
+      resultBox.textContent = 'TX sent: ' + tx.hash + '\nWaiting for confirmation...';
+      var receipt3 = await tx.wait();
+      resultBox.className = 'result-box has-data';
+      resultBox.textContent = 'Batch executed!\nTX: https://optimistic.etherscan.io/tx/' + tx.hash + '\nBlock: ' + receipt3.blockNumber + '\nGas: ' + receipt3.gasUsed.toString();
+      toast('Batch executed on Optimism', 'success');
+    }
+
+  } catch (err) {
+    console.error(err);
+    resultBox.textContent = 'Error: ' + (err.reason || err.message || 'Unknown error');
+    toast('Execution failed: ' + (err.reason || err.message), 'error');
+  }
 }
 
 // ============================================================
 // EXPORT CSV
 // ============================================================
 function exportCSV() {
-  if (filteredApprovals.length === 0) { toast('No data to export', 'error'); return; }
+  if (allEvents.length === 0) {
+    toast('No data to export', 'error');
+    return;
+  }
 
-  var rows = [['Time', 'Approver', 'Spender', 'Amount (USDC)', 'TX Hash', 'Block', 'Source']];
-  for (var i = 0; i < filteredApprovals.length; i++) {
-    var e = filteredApprovals[i];
-    rows.push([formatTime(e.time), e.owner, e.spender, formatUSDC(e.amount), e.txHash, e.block, e.source]);
+  var rows = [['Type', 'FID', 'From', 'To', 'TX Hash', 'Block', 'Time']];
+  for (var i = 0; i < allEvents.length; i++) {
+    var e = allEvents[i];
+    rows.push([e.type, e.fid, e.from, e.to, e.txHash, e.block, formatTime(e.time)]);
   }
 
   var csv = rows.map(function(r) {
-    return r.map(function(c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',');
+    return r.map(function(c) {
+      return '"' + String(c).replace(/"/g, '""') + '"';
+    }).join(',');
   }).join('\n');
 
   var blob = new Blob([csv], { type: 'text/csv' });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
-  a.download = 'devin_approvals_' + Date.now() + '.csv';
+  a.download = 'devin_operations_' + Date.now() + '.csv';
   a.click();
   URL.revokeObjectURL(url);
-  toast('CSV exported (' + filteredApprovals.length + ' rows)', 'success');
+  toast('CSV exported (' + allEvents.length + ' rows)', 'success');
 }
 
 // ============================================================
-// AUTO REFRESH
-// ============================================================
-function toggleAutoRefresh() {
-  autoRefresh = !autoRefresh;
-  var toggle = document.getElementById('autoRefreshToggle');
-  toggle.className = autoRefresh ? 'toggle active' : 'toggle';
-  if (autoRefresh) {
-    autoRefreshTimer = setInterval(function() { fetchApprovals(); }, 60000);
-    toast('Auto-refresh enabled (60s)', 'success');
-  } else {
-    clearInterval(autoRefreshTimer);
-    autoRefreshTimer = null;
-    toast('Auto-refresh disabled', 'info');
-  }
-}
-
-// ============================================================
-// INIT
+// INIT - auto-fetch on load
 // ============================================================
 (function init() {
-  // Load from localStorage first (instant display)
-  var hasLocal = loadFromLocalStorage();
-  if (hasLocal) {
-    filterAndRender();
-    updateStats();
-    document.getElementById('sourceInfo').textContent = 'Loaded ' + allApprovals.length + ' approvals from local cache. Fetching fresh data...';
-    toast('Loaded ' + allApprovals.length + ' from cache', 'info');
-  }
-
-  // Then fetch fresh data from Basescan
-  fetchApprovals();
+  onAdminFuncChange();
+  // Auto fetch on load
+  fetchEvents();
 })();
 </script>
 </body>
