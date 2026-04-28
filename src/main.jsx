@@ -618,6 +618,11 @@ function App() {
                       )}
                     </button>
                   )}
+                  {isMiniApp && !address && !working && (
+                    <button className="secondary mega fc-connect-btn" onClick={connectWallet}>
+                      Reconnect Wallet
+                    </button>
+                  )}
                 </div>
                 <p className="notice">{notice}</p>
               </div>
