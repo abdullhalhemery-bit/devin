@@ -39,7 +39,7 @@ const CONTRACT_OPERATIONS = [
 const ID_REGISTRY_EIP712_DOMAIN = {
   name: 'Farcaster IdRegistry',
   version: '1',
-  chainId: '10',
+  chainId: 10,
   verifyingContract: ID_REGISTRY,
 };
 
@@ -555,12 +555,6 @@ function App() {
       // Build EIP-712 typed data for user's fromSig
       const typedData = {
         types: {
-          EIP712Domain: [
-            { name: 'name', type: 'string' },
-            { name: 'version', type: 'string' },
-            { name: 'chainId', type: 'uint256' },
-            { name: 'verifyingContract', type: 'address' },
-          ],
           ...TRANSFER_TYPES,
         },
         primaryType: 'Transfer',
