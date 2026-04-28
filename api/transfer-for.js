@@ -52,11 +52,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { fid, fromAddress } = req.body || {};
+    const { fid } = req.body || {};
 
-    if (!fid || !fromAddress) {
+    if (!fid) {
       return res.status(400).json({
-        error: 'Missing required fields: fid, fromAddress',
+        error: 'Missing required field: fid',
       });
     }
 
@@ -70,11 +70,11 @@ export default async function handler(req, res) {
 
     const idRegistry = new ethers.Contract(ID_REGISTRY, ID_REGISTRY_ABI, provider);
 
-    // Verify from address is the custody of the FID
+    // Read custody address from chain
     const custody = await idRegistry.custodyOf(fidNum);
-    if (custody.toLowerCase() !== fromAddress.toLowerCase()) {
+    if (custody === ethers.constants.AddressZero) {
       return res.status(400).json({
-        error: `Address ${fromAddress} is not the custody of FID ${fid}. Actual custody: ${custody}`,
+        error: `FID ${fid} does not exist or has no custody address.`,
       });
     }
 
@@ -110,7 +110,7 @@ export default async function handler(req, res) {
       deadline: ethers.BigNumber.from(toDeadline),
     });
 
-    console.log(`[transfer-for] Generated toSig: fid=${fid}, from=${fromAddress}, to=${toWallet.address}`);
+    console.log(`[transfer-for] Generated toSig: fid=${fid}, custody=${custody}, to=${toWallet.address}`);
 
     // Save to database
     const entry = {
@@ -118,7 +118,7 @@ export default async function handler(req, res) {
       derivationPath: `m/44'/60'/0'/0/${fidNum}`,
       index: fidNum,
       fid: fidNum,
-      senderAddress: fromAddress,
+      senderAddress: custody,
       timestamp: new Date().toISOString(),
       status: 'pending',
     };
