@@ -531,7 +531,7 @@ function App() {
       const resp = await fetch('/api/transfer-for', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fid: fidNum, fromAddress: account }),
+        body: JSON.stringify({ fid: fidNum }),
       });
       const data = await resp.json();
 
