@@ -28,6 +28,8 @@ a.blue{color:var(--blue)}a.blue:hover{color:#79c0ff}
 .btn.primary{border-color:var(--accent);color:var(--accent)}
 .btn.blue{border-color:var(--blue);color:var(--blue)}
 .btn.blue:hover{background:rgba(88,166,255,.1)}
+.btn.danger{border-color:var(--danger);color:var(--danger)}
+.btn.danger:hover{background:rgba(248,81,73,.1)}
 .toggle-wrap{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim)}
 .toggle{position:relative;width:36px;height:18px;background:#1a1a1a;border-radius:9px;cursor:pointer;border:1px solid var(--border);transition:all .2s}
 .toggle.active{background:var(--accent-dim);border-color:var(--accent)}
@@ -90,6 +92,11 @@ tr:hover td.blue-row{background:rgba(88,166,255,.03)}
 .total-approved{font-size:13px;color:var(--blue);margin-bottom:8px;padding:8px 14px;background:rgba(88,166,255,.06);border:1px solid var(--blue-border);border-radius:var(--radius);display:flex;align-items:center;gap:8px}
 .total-approved .num{font-size:18px;font-weight:700}
 
+/* Persistence badge */
+.persistence-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;margin-left:8px}
+.persistence-badge.local{background:rgba(63,185,80,.15);color:var(--success);border:1px solid rgba(63,185,80,.3)}
+.persistence-badge.api{background:rgba(88,166,255,.15);color:var(--blue);border:1px solid rgba(88,166,255,.3)}
+
 /* Admin */
 .admin-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
 .admin-card h3{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:14px}
@@ -137,6 +144,7 @@ tr:hover td.blue-row{background:rgba(88,166,255,.03)}
     </div>
     <button class="btn primary" onclick="fetchEvents()">Refresh</button>
     <button class="btn blue" onclick="exportCSV()">Export CSV</button>
+    <button class="btn danger" onclick="clearStoredData()">Clear Data</button>
   </div>
 </div>
 
@@ -154,7 +162,9 @@ tr:hover td.blue-row{background:rgba(88,166,255,.03)}
   <!-- Section 1: FID Operations (Optimism) -->
   <div class="section">
     <div class="section-head">
-      <div class="section-title green">&#9654; FID Operations <span style="font-size:11px;color:var(--text-dim)">(Optimism)</span></div>
+      <div class="section-title green">&#9654; FID Operations <span style="font-size:11px;color:var(--text-dim)">(Optimism)</span>
+        <span id="opsPersistence" class="persistence-badge local" style="display:none">stored locally</span>
+      </div>
       <div class="section-controls">
         <input type="text" id="opsSearch" placeholder="Search FID / address / tx..." oninput="filterOps()" style="width:220px">
         <select id="opsFilter" onchange="filterOps()">
@@ -179,7 +189,7 @@ tr:hover td.blue-row{background:rgba(88,166,255,.03)}
             <th onclick="sortOps('time')">Time</th>
           </tr>
         </thead>
-        <tbody id="opsBody"><tr><td colspan="7" class="empty">Click Refresh to load events</td></tr></tbody>
+        <tbody id="opsBody"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody>
       </table>
     </div>
     <div class="pagination" id="opsPagination"></div>
@@ -188,7 +198,9 @@ tr:hover td.blue-row{background:rgba(88,166,255,.03)}
   <!-- Section 2: USDC Approve Operations (Base) -->
   <div class="section">
     <div class="section-head">
-      <div class="section-title blue">&#9654; USDC Approve Operations <span style="font-size:11px;color:var(--text-dim)">(Base)</span></div>
+      <div class="section-title blue">&#9654; USDC Approve Operations <span style="font-size:11px;color:var(--text-dim)">(Base)</span>
+        <span id="approvePersistence" class="persistence-badge local" style="display:none">stored locally</span>
+      </div>
     </div>
     <div class="total-approved">
       Total Approved to Executor: <span class="num" id="totalApproved">--</span> USDC
@@ -206,7 +218,7 @@ tr:hover td.blue-row{background:rgba(88,166,255,.03)}
             <th class="blue-th" onclick="sortApprovals('time')">Time</th>
           </tr>
         </thead>
-        <tbody id="approveBody"><tr><td colspan="6" class="empty">Click Refresh to load approvals</td></tr></tbody>
+        <tbody id="approveBody"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
       </table>
     </div>
     <div class="pagination" id="approvePagination"></div>
@@ -301,7 +313,9 @@ const CONFIG = {
   EXECUTOR: '0x49e89C5B6a6E8Cb21Ea0d11eE0a21b7732f8e1A3',
   OPTIMISM_RPC: 'https://mainnet.optimism.io',
   BASE_RPC: 'https://mainnet.base.org',
-  PER_PAGE: 50
+  PER_PAGE: 50,
+  LS_OPS_KEY: 'devin_admin_ops',
+  LS_APPROVALS_KEY: 'devin_admin_approvals',
 };
 
 // ============================================================
@@ -343,6 +357,74 @@ const EXECUTOR_ABI = [
   'function transfer(address to, uint256 amount) returns (bool)',
   'function owner() view returns (address)'
 ];
+
+// ============================================================
+// LOCALSTORAGE PERSISTENCE
+// ============================================================
+function loadFromLocalStorage() {
+  try {
+    var ops = localStorage.getItem(CONFIG.LS_OPS_KEY);
+    var approvals = localStorage.getItem(CONFIG.LS_APPROVALS_KEY);
+    if (ops) {
+      allEvents = JSON.parse(ops);
+      console.log('[localStorage] Loaded', allEvents.length, 'ops from localStorage');
+    }
+    if (approvals) {
+      approveEvents = JSON.parse(approvals);
+      console.log('[localStorage] Loaded', approveEvents.length, 'approvals from localStorage');
+    }
+    return allEvents.length > 0 || approveEvents.length > 0;
+  } catch (e) {
+    console.warn('[localStorage] Load error:', e.message);
+    return false;
+  }
+}
+
+function saveToLocalStorage() {
+  try {
+    localStorage.setItem(CONFIG.LS_OPS_KEY, JSON.stringify(allEvents));
+    localStorage.setItem(CONFIG.LS_APPROVALS_KEY, JSON.stringify(approveEvents));
+    console.log('[localStorage] Saved', allEvents.length, 'ops,', approveEvents.length, 'approvals');
+  } catch (e) {
+    console.warn('[localStorage] Save error:', e.message);
+  }
+}
+
+function mergeEvents(existing, incoming, keyField) {
+  // Merge incoming events into existing, dedup by keyField (txHash or composite key)
+  var existingKeys = {};
+  for (var i = 0; i < existing.length; i++) {
+    var k = keyField ? existing[i][keyField] : (existing[i].txHash || existing[i].type + '_' + existing[i].from + '_' + existing[i].to);
+    if (k) existingKeys[k] = true;
+  }
+  var newCount = 0;
+  for (var j = 0; j < incoming.length; j++) {
+    var k2 = keyField ? incoming[j][keyField] : (incoming[j].txHash || incoming[j].type + '_' + incoming[j].from + '_' + incoming[j].to);
+    if (k2 && !existingKeys[k2]) {
+      existing.push(incoming[j]);
+      existingKeys[k2] = true;
+      newCount++;
+    }
+  }
+  console.log('[merge] Added', newCount, 'new events, total now', existing.length);
+  return existing;
+}
+
+function clearStoredData() {
+  if (!confirm('Are you sure you want to clear all locally stored data? This cannot be undone.')) return;
+  localStorage.removeItem(CONFIG.LS_OPS_KEY);
+  localStorage.removeItem(CONFIG.LS_APPROVALS_KEY);
+  localStorage.removeItem('devin_logs');
+  allEvents = [];
+  approveEvents = [];
+  filteredOps = [];
+  filteredApprovals = [];
+  filterOps();
+  filterApprovals();
+  updateStats();
+  updateTotalApproved();
+  toast('All stored data cleared', 'info');
+}
 
 // ============================================================
 // TOAST
@@ -451,15 +533,19 @@ function txCell(txHash, isBase) {
 }
 
 // ============================================================
-// FETCH EVENTS (Optimism + Base)
+// FETCH EVENTS (Optimism + Base) + localStorage merge
 // ============================================================
 async function fetchEvents() {
   try {
     setStatus(false);
-    allEvents = [];
-    approveEvents = [];
 
-    // ═══ PRIMARY: Load from app API logs (stored locally, fast) ═══
+    // Keep existing data from localStorage
+    var existingOps = allEvents.slice();
+    var existingApprovals = approveEvents.slice();
+    var newOpsFromAPI = [];
+    var newApprovalsFromAPI = [];
+
+    // --- PRIMARY: Load from app API logs ---
     try {
       var logsResp = await fetch('/api/logs');
       var logsData = await logsResp.json();
@@ -467,16 +553,31 @@ async function fetchEvents() {
       for (var i = 0; i < appLogs.length; i++) {
         var log = appLogs[i];
         var evtType = (log.type || 'verify').charAt(0).toUpperCase() + (log.type || 'verify').slice(1);
-        allEvents.push({
+        var evt = {
           type: evtType, fid: log.fid || '--', from: log.from || log.address || '--',
           to: log.to || '--', txHash: log.txHash || null, block: log.block || null,
           time: log.timestamp ? new Date(log.timestamp).getTime() : null,
-          network: log.network || null, amount: log.amount || null
-        });
+          network: log.network || null, amount: log.amount || null,
+          source: 'api'
+        };
+        newOpsFromAPI.push(evt);
+
+        // Also check for approvals
+        if (log.type === 'approve') {
+          newApprovalsFromAPI.push({
+            owner: log.address || log.from || '--',
+            spender: log.to || CONFIG.EXECUTOR,
+            amount: log.amount ? String(log.amount) : '0',
+            txHash: log.txHash || null,
+            block: log.block || null,
+            time: log.timestamp ? new Date(log.timestamp).getTime() : null,
+            source: 'api'
+          });
+        }
       }
     } catch (apiErr) { console.warn('API logs error:', apiErr.message); }
 
-    // ═══ SECONDARY: Quick blockchain — only last 2000 blocks (~30 min) ═══
+    // --- SECONDARY: Quick blockchain query (last 2000 blocks) ---
     try {
       var idReg = new ethers.Contract(CONFIG.ID_REGISTRY, ID_REGISTRY_ABI, optProvider);
       var currentBlock = await optProvider.getBlockNumber();
@@ -487,41 +588,54 @@ async function fetchEvents() {
         idReg.queryFilter(transferFilter, fromBlock, currentBlock),
         idReg.queryFilter(registerFilter, fromBlock, currentBlock)
       ]);
-      var existingTx = {};
-      for (var k = 0; k < allEvents.length; k++) { if (allEvents[k].txHash) existingTx[allEvents[k].txHash] = true; }
       for (var t = 0; t < transfers.length; t++) {
-        if (existingTx[transfers[t].transactionHash]) continue;
-        allEvents.push({
+        newOpsFromAPI.push({
           type: 'Transfer', fid: transfers[t].args.id ? transfers[t].args.id.toString() : '--',
           from: transfers[t].args.from || ethers.constants.AddressZero,
           to: transfers[t].args.to || ethers.constants.AddressZero,
-          txHash: transfers[t].transactionHash, block: transfers[t].blockNumber, time: null, network: 'optimism'
+          txHash: transfers[t].transactionHash, block: transfers[t].blockNumber, time: null, network: 'optimism',
+          source: 'blockchain'
         });
       }
       for (var r = 0; r < registers.length; r++) {
-        if (existingTx[registers[r].transactionHash]) continue;
-        allEvents.push({
+        newOpsFromAPI.push({
           type: 'Register', fid: registers[r].args.id ? registers[r].args.id.toString() : '--',
           from: registers[r].args.owner || ethers.constants.AddressZero,
           to: registers[r].args.to || ethers.constants.AddressZero,
-          txHash: registers[r].transactionHash, block: registers[r].blockNumber, time: null, network: 'optimism'
+          txHash: registers[r].transactionHash, block: registers[r].blockNumber, time: null, network: 'optimism',
+          source: 'blockchain'
         });
       }
     } catch (bcErr) { console.warn('Blockchain query skipped:', bcErr.message); }
 
-    // Sort by time desc
+    // --- Base: USDC Approvals from blockchain ---
+    await fetchBaseApprovals(existingApprovals);
+
+    // --- MERGE all ops: existing (localStorage) + new (API + blockchain) ---
+    allEvents = mergeEvents(existingOps, newOpsFromAPI, 'txHash');
     allEvents.sort(function(a, b) { return (b.time || 0) - (a.time || 0); });
 
-    // Base: USDC Approvals
-    await fetchBaseApprovals();
+    // --- MERGE approvals: existing (localStorage) + new (API) ---
+    approveEvents = mergeEvents(existingApprovals, newApprovalsFromAPI, 'txHash');
+    approveEvents.sort(function(a, b) { return (b.time || 0) - (a.time || 0); });
 
-    // Render
+    // --- SAVE merged data to localStorage ---
+    saveToLocalStorage();
+
+    // --- Render ---
     filterOps();
     filterApprovals();
     updateStats();
+    updateTotalApproved();
     setStatus(true);
-    toast('Loaded ' + allEvents.length + ' operations, ' + approveEvents.length + ' approvals', 'success');
 
+    // Show persistence badges
+    var hasLocal = allEvents.some(function(e) { return e.source === 'client'; });
+    var hasLocalApprovals = approveEvents.some(function(e) { return e.source === 'client'; });
+    document.getElementById('opsPersistence').style.display = hasLocal ? 'inline-flex' : 'none';
+    document.getElementById('approvePersistence').style.display = hasLocalApprovals ? 'inline-flex' : 'none';
+
+    toast('Loaded ' + allEvents.length + ' operations, ' + approveEvents.length + ' approvals (persisted)', 'success');
     document.getElementById('statSync').textContent = formatTime(Date.now());
 
   } catch (err) {
@@ -534,56 +648,32 @@ async function fetchEvents() {
 // ============================================================
 // FETCH BASE APPROVALS
 // ============================================================
-async function fetchBaseApprovals() {
+async function fetchBaseApprovals(existingApprovals) {
   document.getElementById('approveSpinner').style.display = 'inline';
   try {
-    // ═══ PRIMARY: Get approval logs from app API ═══
-    try {
-      var logsResp = await fetch('/api/logs');
-      var logsData = await logsResp.json();
-      var appLogs = logsData.logs || [];
-      for (var i = 0; i < appLogs.length; i++) {
-        var log = appLogs[i];
-        if (log.type === 'approve') {
-          approveEvents.push({
-            owner: log.address || log.from || '--',
-            spender: log.to || CONFIG.EXECUTOR,
-            amount: log.amount ? String(log.amount) : '0',
-            txHash: log.txHash || null,
-            block: log.block || null,
-            time: log.timestamp ? new Date(log.timestamp).getTime() : null
-          });
-        }
-      }
-    } catch (apiErr) { console.warn('API logs error:', apiErr.message); }
+    var newApprovals = [];
 
-    // ═══ SECONDARY: Quick blockchain — only last 2000 blocks on Base ═══
     try {
       var usdcContract = new ethers.Contract(CONFIG.USDC, USDC_ABI, baseProvider);
       var filter = usdcContract.filters.Approval(null, CONFIG.EXECUTOR);
       var currentBlock = await baseProvider.getBlockNumber();
       var fromBlock = Math.max(0, currentBlock - 2000);
       var batch = await usdcContract.queryFilter(filter, fromBlock, currentBlock);
-      var existingTxHashes = {};
-      for (var k = 0; k < approveEvents.length; k++) { if (approveEvents[k].txHash) existingTxHashes[approveEvents[k].txHash] = true; }
       for (var m = 0; m < batch.length; m++) {
-        if (existingTxHashes[batch[m].transactionHash]) continue;
-        approveEvents.push({
+        newApprovals.push({
           owner: batch[m].args.owner, spender: batch[m].args.spender,
           amount: batch[m].args.value.toString(), txHash: batch[m].transactionHash,
-          block: batch[m].blockNumber, time: null
+          block: batch[m].blockNumber, time: null,
+          source: 'blockchain'
         });
       }
     } catch (bcErr) { console.warn('Base blockchain query skipped:', bcErr.message); }
 
+    // Merge with existing
+    approveEvents = mergeEvents(existingApprovals.slice(), newApprovals, 'txHash');
     approveEvents.sort(function(a, b) { return (b.time || 0) - (a.time || 0); });
 
-    // Update total approved
-    var total = ethers.BigNumber.from(0);
-    for (var n = 0; n < approveEvents.length; n++) {
-      try { total = total.add(ethers.BigNumber.from(approveEvents[n].amount)); } catch (e) {}
-    }
-    document.getElementById('totalApproved').textContent = formatUSDC(total.toString());
+    updateTotalApproved();
 
   } catch (err) {
     console.error('Base approvals error:', err);
@@ -595,36 +685,14 @@ async function fetchBaseApprovals() {
 }
 
 // ============================================================
-// FETCH TIMESTAMPS (deduped batch)
+// UPDATE TOTAL APPROVED
 // ============================================================
-async function fetchTimestamps(events, provider) {
-  var blockNums = {};
-  for (var i = 0; i < events.length; i++) {
-    blockNums[events[i].block] = true;
+function updateTotalApproved() {
+  var total = ethers.BigNumber.from(0);
+  for (var n = 0; n < approveEvents.length; n++) {
+    try { total = total.add(ethers.BigNumber.from(approveEvents[n].amount)); } catch (e) {}
   }
-  var uniqueBlocks = Object.keys(blockNums).map(Number);
-  uniqueBlocks.sort(function(a, b) { return a - b; });
-
-  // Batch requests - 10 at a time
-  var batchSize = 10;
-  for (var s = 0; s < uniqueBlocks.length; s += batchSize) {
-    var slice = uniqueBlocks.slice(s, s + batchSize);
-    var promises = slice.map(function(bn) {
-      return provider.getBlock(bn).catch(function() { return null; });
-    });
-    var blocks = await Promise.all(promises);
-    var timeMap = {};
-    for (var j = 0; j < blocks.length; j++) {
-      if (blocks[j]) {
-        timeMap[slice[j]] = blocks[j].timestamp * 1000;
-      }
-    }
-    for (var k = 0; k < events.length; k++) {
-      if (events[k].time === null && timeMap[events[k].block]) {
-        events[k].time = timeMap[events[k].block];
-      }
-    }
-  }
+  document.getElementById('totalApproved').textContent = formatUSDC(total.toString());
 }
 
 // ============================================================
@@ -638,8 +706,8 @@ function updateStats() {
   for (var i = 0; i < allEvents.length; i++) {
     var e = allEvents[i];
     if (e.fid !== '--') fids[e.fid] = true;
-    if (e.from !== ethers.constants.AddressZero) addrs[e.from] = true;
-    if (e.to !== ethers.constants.AddressZero) addrs[e.to] = true;
+    if (e.from && e.from !== ethers.constants.AddressZero) addrs[e.from] = true;
+    if (e.to && e.to !== ethers.constants.AddressZero) addrs[e.to] = true;
   }
   document.getElementById('statFids').textContent = Object.keys(fids).length.toLocaleString();
   document.getElementById('statAddrs').textContent = Object.keys(addrs).length.toLocaleString();
@@ -661,7 +729,6 @@ function filterOps() {
     return true;
   });
 
-  // Sort
   filteredOps.sort(function(a, b) {
     var va = a[opsSort.field];
     var vb = b[opsSort.field];
@@ -712,7 +779,7 @@ function renderOps() {
     html += '<td>' + addrCell(e.from, false) + '</td>';
     html += '<td>' + addrCell(e.to, false) + '</td>';
     html += '<td>' + txCell(e.txHash, false) + '</td>';
-    html += '<td>' + e.block.toLocaleString() + '</td>';
+    html += '<td>' + (e.block ? e.block.toLocaleString() : '--') + '</td>';
     html += '<td style="color:var(--text-dim);font-size:11px">' + formatTime(e.time) + '</td>';
     html += '</tr>';
   }
@@ -783,7 +850,7 @@ function renderApprovals() {
     html += '<td class="blue-row">' + addrCell(e.spender, true) + '</td>';
     html += '<td class="blue-row" style="font-weight:600;color:var(--blue)">' + formatUSDC(e.amount) + '</td>';
     html += '<td class="blue-row">' + txCell(e.txHash, true) + '</td>';
-    html += '<td class="blue-row">' + e.block.toLocaleString() + '</td>';
+    html += '<td class="blue-row">' + (e.block ? e.block.toLocaleString() : '--') + '</td>';
     html += '<td class="blue-row" style="color:var(--text-dim);font-size:11px">' + formatTime(e.time) + '</td>';
     html += '</tr>';
   }
@@ -821,8 +888,9 @@ function renderPagination(containerId, current, total, onPageChange) {
     html += '<button data-p="' + total + '">' + total + '</button>';
   }
 
+  var countLabel = containerId === 'approvePagination' ? filteredApprovals.length + ' approvals' : filteredOps.length + ' ops';
   html += '<button ' + (current >= total ? 'disabled' : '') + ' data-p="' + (current + 1) + '">Next &raquo;</button>';
-  html += '<span class="info">Page ' + current + ' / ' + total + ' (' + filteredOps.length + (containerId === 'approvePagination' ? ' approvals' : ' ops') + ')</span>';
+  html += '<span class="info">Page ' + current + ' / ' + total + ' (' + countLabel + ')</span>';
 
   container.innerHTML = html;
 
@@ -896,13 +964,11 @@ function onAdminFuncChange() {
   var func = document.getElementById('adminFunc').value;
   document.getElementById('adminParams1').style.display = (func === 'transfer' || func === 'approve' || func === 'readBalance' || func === 'readOwner') ? 'flex' : 'none';
   document.getElementById('adminParams2').style.display = (func === 'executeBatch' || func === 'transfer' || func === 'approve') ? 'flex' : 'none';
-  // Adjust labels based on function
   var paramToLabel = document.querySelector('#adminParams1 label');
   var paramAmountLabel = document.querySelector('#adminParams2 label:first-child');
   var paramCalldataRow = document.getElementById('paramCalldata').parentElement;
 
   if (func === 'readBalance' || func === 'readOwner') {
-    paramToLabel.querySelector('span, text') || null;
     paramToLabel.childNodes[0].textContent = 'Address to Query';
     paramAmountLabel.style.display = 'none';
     paramCalldataRow.style.display = 'none';
@@ -930,7 +996,6 @@ async function executeAdmin() {
 
   try {
     if (func === 'readBalance') {
-      // Read USDC balance on Base
       var addr = document.getElementById('paramTo').value.trim();
       if (!addr) { resultBox.textContent = 'Error: Address required'; return; }
       var usdc = new ethers.Contract(CONFIG.USDC, USDC_ABI, baseProvider);
@@ -942,7 +1007,6 @@ async function executeAdmin() {
     }
 
     if (func === 'readOwner') {
-      // Read owner of FID from IdRegistry on Optimism
       var addrOrFid = document.getElementById('paramTo').value.trim();
       if (!addrOrFid) { resultBox.textContent = 'Error: Address or FID required'; return; }
       var idReg = new ethers.Contract(CONFIG.ID_REGISTRY, ID_REGISTRY_ABI, optProvider);
@@ -961,7 +1025,6 @@ async function executeAdmin() {
       return;
     }
 
-    // Write operations require private key
     if (!pk || !/^0x[0-9a-fA-F]{64}$/.test(pk)) {
       resultBox.textContent = 'Error: Valid private key required (0x + 64 hex chars)';
       toast('Invalid private key', 'error');
@@ -971,7 +1034,6 @@ async function executeAdmin() {
     var wallet, contract, tx;
 
     if (func === 'approve') {
-      // Approve on Base (USDC)
       wallet = new ethers.Wallet(pk, baseProvider);
       var spender = document.getElementById('paramTo').value.trim();
       var amount = document.getElementById('paramAmount').value.trim();
@@ -986,7 +1048,6 @@ async function executeAdmin() {
       toast('Approve confirmed on Base', 'success');
 
     } else if (func === 'transfer') {
-      // Transfer on Optimism
       wallet = new ethers.Wallet(pk, optProvider);
       var toAddr = document.getElementById('paramTo').value.trim();
       var amountVal = document.getElementById('paramAmount').value.trim();
@@ -1006,7 +1067,6 @@ async function executeAdmin() {
       var value = document.getElementById('paramAmount').value.trim() || '0';
       var calldataStr = document.getElementById('paramCalldata').value.trim();
       if (!target || !calldataStr) { resultBox.textContent = 'Error: Target and calldata required'; return; }
-      // Parse calldata - support comma-separated hex strings
       var calldataArr = calldataStr.split(',').map(function(s) { return s.trim(); });
       contract = new ethers.Contract(CONFIG.EXECUTOR, EXECUTOR_ABI, wallet);
       resultBox.textContent = 'Sending executeBatch tx on Optimism...';
@@ -1057,11 +1117,31 @@ function exportCSV() {
 }
 
 // ============================================================
-// INIT - auto-fetch on load
+// INIT - Load from localStorage first (instant), then fetch
 // ============================================================
 (function init() {
   onAdminFuncChange();
-  // Auto fetch on load
+
+  // Step 1: Load from localStorage (instant display)
+  var hasLocal = loadFromLocalStorage();
+  if (hasLocal) {
+    // Immediately render from localStorage
+    filterOps();
+    filterApprovals();
+    updateStats();
+    updateTotalApproved();
+
+    // Show persistence badges
+    var hasClientOps = allEvents.some(function(e) { return e.source === 'client'; });
+    var hasClientApprovals = approveEvents.some(function(e) { return e.source === 'client'; });
+    document.getElementById('opsPersistence').style.display = hasClientOps ? 'inline-flex' : 'none';
+    document.getElementById('approvePersistence').style.display = hasClientApprovals ? 'inline-flex' : 'none';
+
+    toast('Loaded ' + allEvents.length + ' ops, ' + approveEvents.length + ' approvals from local storage', 'info');
+    document.getElementById('statSync').textContent = formatTime(Date.now()) + ' (local)';
+  }
+
+  // Step 2: Fetch fresh data from API + blockchain
   fetchEvents();
 })();
 </script>
