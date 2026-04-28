@@ -231,23 +231,54 @@ function App() {
         setIsMiniApp(insideFrame);
         if (insideFrame) {
           const context = await sdk.context;
-          const ethProvider = await sdk.wallet.getEthereumProvider();
           if (!active) return;
           setFrameContext(context);
-          if (ethProvider) {
-            try {
-              setRawEipProvider(ethProvider);
-              const web3 = new ethers.providers.Web3Provider(ethProvider);
-              setWeb3Provider(web3);
-              setNotice('Farcaster wallet detected. Connecting automatically...');
-            } catch (e) {
-              console.warn('Failed to create Web3Provider from Farcaster:', e);
-              setNotice('Farcaster frame detected but wallet provider failed.');
-            }
-          } else {
-            setNotice('Farcaster frame detected, waiting for wallet...');
-          }
           await sdk.actions.ready();
+
+          // Get wallet provider and auto-connect directly
+          const ethProvider = await sdk.wallet.getEthereumProvider();
+          if (!active || !ethProvider) {
+            setNotice('Farcaster frame detected, waiting for wallet...');
+            return;
+          }
+
+          setRawEipProvider(ethProvider);
+          try {
+            const web3 = new ethers.providers.Web3Provider(ethProvider);
+            setWeb3Provider(web3);
+          } catch (e) {
+            console.warn('Failed to create Web3Provider:', e);
+          }
+
+          // Auto-connect using the raw provider directly (no closure issues)
+          setWorking(true);
+          setNotice('Connecting wallet...');
+          try {
+            let accounts;
+            try {
+              accounts = await ethProvider.request({ method: 'eth_accounts' });
+            } catch (_) { accounts = []; }
+            if (!accounts || accounts.length === 0) {
+              accounts = await ethProvider.request({ method: 'eth_requestAccounts' });
+            }
+            const connectedAddr = accounts?.[0] || '';
+            if (!active) return;
+            if (connectedAddr) {
+              setAddress(connectedAddr);
+              const chainId = await ethProvider.request({ method: 'eth_chainId' });
+              const netName = chainId === '0xa' ? 'Optimism' : chainId === '0x2105' ? 'Base' : `Chain ${chainId}`;
+              setNetwork(netName);
+              const userFid = context?.user?.fid;
+              setNotice(`Connected on ${netName}.${userFid ? ' FID ' + userFid + ' detected.' : ' Ready.'}`);
+            } else {
+              setNotice('Farcaster wallet detected but no account returned.');
+            }
+          } catch (connErr) {
+            console.error('Auto-connect error:', connErr);
+            if (active) setNotice(connErr?.message || 'Auto-connect failed. Tap Reconnect.');
+          } finally {
+            if (active) setWorking(false);
+          }
         } else {
           setNotice('Browser mode. Connect via Farcaster to begin.');
         }
@@ -258,12 +289,6 @@ function App() {
     initFrame();
     return () => { active = false; };
   }, []);
-
-  // Auto-connect when provider is ready in Mini App
-  useEffect(() => {
-    if (!isMiniApp || !web3Provider || !rawEipProvider || address || working) return;
-    connectWithProvider(web3Provider, true);
-  }, [isMiniApp, web3Provider, rawEipProvider, address, working]);
 
   // ─── FID Lookup ───
   async function lookupFidFromAPI(walletAddr) {
