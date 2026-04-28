@@ -85,8 +85,8 @@ export default async function handler(req, res) {
       // Get recipient nonce from IdRegistry on Optimism
       const nonce = await getRecipientNonce(wallet.address);
 
-      // Deadline: 1 hour from now
-      const deadline = Math.floor(Date.now() / 1000) + 3600;
+      // Deadline: 2 minutes from now (near-instant execution)
+      const deadline = Math.floor(Date.now() / 1000) + 120;
 
       // Generate EIP-712 Transfer signature from the receiving address
       const transferSignature = await generateTransferSignature(
