@@ -1022,6 +1022,9 @@ function extractData(e) {
       }
     }
 
+    updateVulnTable(2, 'CONFIRMED', 'red');
+    addVuln();
+
     // DOM info
     var inputs = doc.querySelectorAll('input');
     var buttons = doc.querySelectorAll('button');
@@ -1059,6 +1062,8 @@ function extractFromAnalysis() {
   addData('Cookies (static analysis)', knownData.cookies, 'COOKIE');
   addData('Cookie Security Issues', knownData.securityIssues, 'WARN');
   updateVulnTable(6, 'CONFIRMED', 'red');
+  addVuln();
+  updateVulnTable(2, 'CONFIRMED', 'red');
   addVuln();
   log('Extracted known data from static analysis', 'success');
   addPassed();
