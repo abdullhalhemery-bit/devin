@@ -1208,15 +1208,16 @@ function interceptFetch(e) {
     }).then(function(data) {
       if (data.data) {
         var received = JSON.parse(data.data);
-        var swapped = received.to === testAddr;
+        var receivedTo = received.to || '(missing)';
+        var swapped = receivedTo === testAddr;
 
         log('Result: original address = ' + originalAddr.substring(0,10) + '...', 'data');
-        log('Result: server received = ' + received.to.substring(0,10) + '...', swapped ? 'error' : 'data');
+        log('Result: server received = ' + receivedTo.substring(0,10) + '...', swapped ? 'error' : 'data');
         log('Address swap successful: ' + (swapped ? 'YES - vulnerability confirmed' : 'NO'), swapped ? 'success' : 'error');
 
         addData('Fetch Intercept Result', {
           original_to: originalAddr,
-          server_received_to: received.to,
+          server_received_to: receivedTo,
           swapped: swapped,
           server: echoServer
         }, 'INTERCEPT');
