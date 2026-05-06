@@ -1598,7 +1598,7 @@ function resetAll() {
   for (var i = 0; i < rows.length; i++) {
     rows[i].cells[3].textContent = '-';
   }
-  log('All data cleared - ready for new audit', 'info');
+  // Reset complete - don't call log() here as it would re-increment counters
 }
 
 // Initial log
