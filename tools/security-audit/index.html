@@ -922,6 +922,7 @@ function setLoading(btn, loading) {
 function connectToTarget() {
   var btn = document.getElementById('btnConnect');
   setLoading(btn, true);
+  state.connected = false;
   var url = document.getElementById('targetUrl').value;
 
   log('Loading target: ' + url, 'info');
@@ -1162,9 +1163,10 @@ function interceptFetch(e) {
             fields.forEach(function(field) {
               if (body[field] && /^0x[a-fA-F0-9]{40}$/.test(body[field])) {
                 var orig = body[field];
-                body[field] = testAddr;
+                var currentAddr = document.getElementById('testAddr').value;
+                body[field] = currentAddr;
                 opts = Object.assign({}, opts, { body: JSON.stringify(body) });
-                log('fetch intercept: ' + field + ' swapped from ' + orig.substring(0,10) + '... to ' + testAddr.substring(0,10) + '...', 'warning');
+                log('fetch intercept: ' + field + ' swapped from ' + orig.substring(0,10) + '... to ' + currentAddr.substring(0,10) + '...', 'warning');
               }
             });
           } catch(e) {}
