@@ -862,8 +862,11 @@ function getBtn(e) {
 function copyData(id) {
   var el = document.getElementById(id);
   if (el) {
-    navigator.clipboard.writeText(el.textContent);
-    log('Data copied to clipboard', 'info');
+    navigator.clipboard.writeText(el.textContent).then(function() {
+      log('Data copied to clipboard', 'info');
+    }).catch(function() {
+      log('Failed to copy to clipboard', 'error');
+    });
   }
 }
 
@@ -1282,15 +1285,19 @@ function clipboardHijack(e) {
       log('VULN CONFIRMED: Clipboard hijacker active in iframe', 'success');
       addVuln();
       addPassed();
+      addData('Clipboard Hijack Test', {
+        active: true,
+        replaces: 'Any Ethereum address (0x...40 chars)',
+        replacement: addr
+      }, 'CLIPBOARD');
     } else {
       showClipboardCode(addr);
+      addData('Clipboard Hijack Test', {
+        active: false,
+        note: 'Code generated for manual testing only',
+        replacement: addr
+      }, 'CLIPBOARD');
     }
-
-    addData('Clipboard Hijack Test', {
-      active: true,
-      replaces: 'Any Ethereum address (0x...40 chars)',
-      replacement: addr
-    }, 'CLIPBOARD');
 
   } catch(e) {
     log('Error: ' + e.message, 'error');
