@@ -1501,7 +1501,7 @@ function runAll() {
       i++;
       setTimeout(next, 800);
     } else {
-      log('===== Full audit complete =====', 'success');
+      log('===== All tests initiated (async results may still arrive) =====', 'success');
     }
   }
   next();
@@ -1589,6 +1589,8 @@ function resetAll() {
   document.getElementById('currentUrl').textContent = 'لم يتم التحميل';
   document.getElementById('frameStatus').textContent = '';
   getFrame().style.display = 'none';
+  getFrame().onload = null;
+  getFrame().onerror = null;
   getFrame().src = '';
   document.getElementById('iframeOverlay').classList.remove('hidden');
   // Reset vuln table
